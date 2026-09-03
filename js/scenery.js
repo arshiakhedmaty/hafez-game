@@ -20,7 +20,10 @@ const Sky = (() => {
             [0.84, '#e2703a'], [1, '#f3a45c']],
     vault: [[0, '#120c1a'], [0.5, '#1d1426'], [1, '#2c1e35']],
     finale:[[0, '#150b22'], [0.26, '#3d1440'], [0.52, '#8e2a4e'],
-            [0.78, '#d9542b'], [1, '#ffcf7a']]
+            [0.78, '#d9542b'], [1, '#ffcf7a']],
+    /* the hidden chapter: no sun at all, just her lantern and the moon */
+    ghost: [[0, '#05070f'], [0.34, '#0d1424'], [0.62, '#182742'],
+            [0.86, '#28405e'], [1, '#3d5b7a']]
   };
 
   /* ---- distant mesa band, generated once per theme/seed ---- */
@@ -175,7 +178,8 @@ const Sky = (() => {
 
     /* the finale is later in the day than anything before it: the sun is
        already going down behind the ridge and the first stars are out */
-    const fin = theme === 'finale';
+    const fin = theme === 'finale' || theme === 'ghost';
+    const noSun = theme === 'ghost';
     if (fin) {
       const RS = srand(5);
       c.save();
@@ -200,7 +204,7 @@ const Sky = (() => {
     }
 
     /* ---- the sun, low and huge ---- */
-    const sunX = w * 0.68 - camX * 0.02, sunY = h * (fin ? 0.71 : 0.58);
+    const sunX = w * 0.68 - camX * 0.02, sunY = h * (noSun ? 1.6 : fin ? 0.71 : 0.58);
     c.save();
     for (let i = 7; i > 0; i--) {
       c.globalAlpha = 0.045;

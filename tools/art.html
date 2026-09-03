@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HAFEZ GAME — share art</title>
+<!--
+  A link with no picture on it looks like a broken link, so the game needs
+  a cover. This page paints one, and the WANTED poster beside it, using
+  the game's OWN renderer: the same drawChar, the same sky, the same
+  palette. Stock art would have been faster and would have shown two
+  people who are not Arshia and Rojina.
+
+  Open it with the dev server running and it renders both images and
+  posts them back to assets/. Nothing here ships.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  body { background:#160d1c; color:#efdcb0; font:14px/1.5 'Special Elite',monospace;
+         margin:0; padding:24px; }
+  h1 { font-family:Rye,serif; color:#e2b043; letter-spacing:3px; font-size:20px; }
+  #out { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+  canvas { border:2px solid #4a2a17; max-width:600px; height:auto; background:#160d1c; }
+  #log { margin-top:16px; color:#57c2b4; white-space:pre-line; }
+</style>
+</head>
+<body>
+<h1>HAFEZ GAME — SHARE ART</h1>
+<div id="out">
+  <canvas id="og" width="1200" height="630"></canvas>
+  <canvas id="poster" width="1080" height="1350"></canvas>
+</div>
+<div id="log">rendering&hellip;</div>
+
+<script>const Snd = { play(){}, music(){}, resume(){}, init(){}, vol(){}, S:{} };</script>
+<script src="../js/config.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/input.js"></script>
+<script src="../js/art.js"></script>
+<script src="../js/particles.js"></script>
+<script src="../js/scenery.js"></script>
+<script src="../js/levels.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+const LINK = 'arshiakhedmaty.github.io/hafez-game';
+
+/* ---- the social card: 1200x630, the shape every chat app crops to ---- */
+function drawOg(c) {
+  const W = 1200, H = 630;
+  /* the game paints at 960x540, so scale to the card's width and take the
+     middle band of what falls off the bottom */
+  const k = W / CFG.W;
+  c.save();
+  c.translate(0, -(CFG.H * k - H) / 2);
+  c.scale(k, k);
+  Sky.draw(c, 'gulch', 260, 0, CFG.W, CFG.H, 2.1);
+  const gy = CFG.H - 84;
+  c.fillStyle = PAL.ground; c.fillRect(0, gy, CFG.W, 120);
+  c.fillStyle = PAL.groundTop; c.fillRect(0, gy, CFG.W, 4);
+  /* a little town furniture so the ground is not an empty bar */
+  Sky.cactus(c, 120, gy, 0.9, '#3a1c3c');
+  Sky.cactus(c, 862, gy, 0.75, '#3a1c3c');
+  Sky.pole(c, 250, gy, 0.8, '#33183a');
+
+  drawChar(c, 'arshia', { x: CFG.W / 2 - 82, y: gy, face: 1, anim: 'idle',
+                          t: 1.2, expr: 'normal', scale: 2.6 });
+  drawChar(c, 'rojina', { x: CFG.W / 2 + 82, y: gy, face: -1, anim: 'idle',
+                          t: 2.0, expr: 'happy', scale: 2.6,
+                          blinkSeed: 0.45, closeness: 0.9 });
+  c.restore();
+
+  /* the words sit in card space, not game space, so they stay crisp */
+  c.save();
+  c.fillStyle = 'rgba(22,13,28,0.34)'; c.fillRect(0, 0, W, 250);
+  txt(c, CFG.TITLE, W / 2, 116,
+      { size: 92, font: FONT.title, fill: PAL.gold, stroke: PAL.ink, lw: 12, letter: 6, shadow: 5 });
+  txt(c, CFG.SUBTITLE, W / 2, 176,
+      { size: 30, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 6, letter: 9 });
+  c.strokeStyle = PAL.parchDk; c.lineWidth = 4; c.setLineDash([12, 9]);
+  c.beginPath(); c.moveTo(W / 2 - 300, 206); c.lineTo(W / 2 + 300, 206); c.stroke();
+  c.setLineDash([]);
+  c.fillStyle = 'rgba(22,13,28,0.62)'; c.fillRect(0, H - 62, W, 62);
+  txt(c, 'A TWO-PLAYER OLD-WEST CO-OP GAME  ·  ONE LAPTOP  ·  ONE KEYBOARD',
+      W / 2, H - 32, { size: 21, font: FONT.ui, fill: PAL.parch, letter: 2 });
+  c.restore();
+}
+
+/* ---- the WANTED poster: portrait, for a story or a print-out ---- */
+function drawPoster(c) {
+  const W = 1080, H = 1350;
+  c.fillStyle = '#2a1830'; c.fillRect(0, 0, W, H);
+  /* a plank wall behind it */
+  c.save();
+  for (let y = 0; y < H; y += 92) {
+    c.fillStyle = (y / 92) % 2 ? '#4a2a17' : '#553019';
+    c.fillRect(0, y, W, 92);
+    c.strokeStyle = 'rgba(22,13,28,0.5)'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke();
+  }
+  c.restore();
+
+  c.save();
+  c.translate(70, 78);
+  Chrome.poster(c, 0, 0, W - 140, H - 156);
+  c.translate(0, 0);
+  const w = W - 140;
+
+  txt(c, 'WANTED', w / 2, 118,
+      { size: 118, font: FONT.title, fill: '#4a2a17', letter: 10 });
+  txt(c, 'DEAD OR ALIVE  ·  BUT ONLY TOGETHER', w / 2, 178,
+      { size: 26, font: FONT.ui, fill: '#6d3b1c', letter: 3 });
+  c.strokeStyle = '#4a2a17'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(70, 208); c.lineTo(w - 70, 208); c.stroke();
+
+  /* their two faces, side by side, drawn by the game itself */
+  drawPortrait(c, 'arshia', w / 2 - 168, 372, 132, 'normal', 1.1);
+  drawPortrait(c, 'rojina', w / 2 + 168, 372, 132, 'happy', 2.3);
+  txt(c, LOOK.arshia.name, w / 2 - 168, 528,
+      { size: 40, font: FONT.title, fill: '#6d3b1c', letter: 3 });
+  txt(c, LOOK.rojina.name, w / 2 + 168, 528,
+      { size: 40, font: FONT.title, fill: '#6d3b1c', letter: 3 });
+  txt(c, LOOK.arshia.nameFa, w / 2 - 168, 566, { size: 26, font: FONT.ui, fill: '#8a5a30' });
+  txt(c, LOOK.rojina.nameFa, w / 2 + 168, 566, { size: 26, font: FONT.ui, fill: '#8a5a30' });
+
+  c.beginPath(); c.moveTo(70, 610); c.lineTo(w - 70, 610); c.stroke();
+
+  /* the pair of them, full length, riding out */
+  const gy = 860;
+  c.save();
+  c.globalAlpha = 0.16;
+  c.fillStyle = '#6d3b1c'; c.fillRect(70, gy - 210, w - 140, 214);
+  c.restore();
+  drawChar(c, 'arshia', { x: w / 2 - 74, y: gy, face: 1, anim: 'idle', t: 1.4, scale: 3.1 });
+  drawChar(c, 'rojina', { x: w / 2 + 74, y: gy, face: -1, anim: 'idle', t: 2.2,
+                          scale: 3.1, blinkSeed: 0.45, expr: 'love', closeness: 1 });
+  c.strokeStyle = '#4a2a17'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(70, gy + 34); c.lineTo(w - 70, gy + 34); c.stroke();
+
+  [['REWARD', 'ONE RIDE HOME'],
+   ['LAST SEEN', 'RIDING WEST OUT OF REDWATER'],
+   ['NOTE', 'NEITHER OF THEM CAN FINISH ALONE']
+  ].forEach(([k, v], i) => {
+    const y = gy + 88 + i * 62;
+    txt(c, k, 96, y, { size: 22, font: FONT.ui, fill: '#8a5a30', align: 'left', letter: 3 });
+    txt(c, v, 96, y + 30, { size: 30, font: FONT.title, fill: '#4a2a17', align: 'left', letter: 1 });
+  });
+
+  txt(c, LINK, w / 2, H - 214,
+      { size: 30, font: FONT.title, fill: '#6d3b1c', letter: 2 });
+  c.restore();
+}
+
+/* ---------------------------------------------------------------- */
+async function go() {
+  const log = document.getElementById('log');
+  try { await document.fonts.ready; } catch (e) {}
+  await new Promise(r => setTimeout(r, 400));
+
+  const jobs = [
+    ['og-card.png', document.getElementById('og'), drawOg],
+    ['wanted-poster.png', document.getElementById('poster'), drawPoster]
+  ];
+  const lines = [];
+  for (const [name, cv, fn] of jobs) {
+    const c = cv.getContext('2d');
+    c.clearRect(0, 0, cv.width, cv.height);
+    fn(c);
+    const data = cv.toDataURL('image/png');
+    const res = await fetch('/__dev-save/' + name, { method: 'POST', body: data });
+    lines.push(name + '  ' + cv.width + 'x' + cv.height + '  ' +
+               (data.length / 1365).toFixed(0) + ' KB  ->  ' + await res.text());
+    log.textContent = lines.join('\n');
+  }
+  window.__artDone = lines;
+}
+go();
+</script>
+</body>
+</html>

@@ -23,7 +23,7 @@ fs.mkdirSync(dist, { recursive: true });
 const JS = [
   'js/config.js', 'js/utils.js', 'js/input.js', 'js/audio.js', 'js/art.js',
   'js/particles.js', 'js/scenery.js', 'js/levels.js', 'js/platformer.js',
-  'js/minigames.js', 'js/ride.js', 'js/ui.js', 'js/game.js'
+  'js/minigames.js', 'js/ride.js', 'js/ui.js', 'js/custom.js', 'js/game.js'
 ];
 
 /* the bundle normally boots on DOMContentLoaded; once it is inflated that
@@ -86,6 +86,9 @@ const html = [
   '<meta name="description" content="A two-player old-west co-op game for one keyboard. Arshia on WASD, Rojina on the arrow keys.">',
   '<meta property="og:title" content="Hafez Game">',
   '<meta property="og:description" content="A two-player old-west co-op game for one keyboard.">',
+  '<meta property="og:image" content="https://arshiakhedmaty.github.io/hafez-game/assets/og-card.png">',
+  '<meta name="twitter:card" content="summary_large_image">',
+  '<meta name="twitter:image" content="https://arshiakhedmaty.github.io/hafez-game/assets/og-card.png">',
   '<link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&display=swap" rel="stylesheet">',
   '<style>' + css + '</style>',
   '</head>',

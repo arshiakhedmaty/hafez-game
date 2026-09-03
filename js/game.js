@@ -12,6 +12,14 @@ const Game = (() => {
   let fadeT = 0, fadeDir = 0, fadeNext = null;
   let last = 0, acc = 0;
 
+  /* a speedrun is the seven ordinary chapters on one clock. The clock
+     only advances inside a stage, so menus and the pause screen are
+     free and nobody has to race the loading of a menu.              */
+  const Run = { on: false, time: 0, splits: [], deaths: 0,
+                silver: 0, silverMax: 0, pb: null };
+  /* a level someone built and shared; stageIdx is -1 while one runs */
+  let customDef = null, customBack = 'main';
+
   /* ---------------- canvas fitting ---------------- */
   function resize() {
     const W = window.innerWidth, H = window.innerHeight;
@@ -42,14 +50,58 @@ const Game = (() => {
     paused = false;
   }
 
+  function startCustom(L, back) {
+    customDef = Lvl.toDef(L);
+    customBack = back || 'main';
+    Snd.music('gulch');
+    Play.start(customDef, { difficulty: Save.data.difficulty });
+    mode = 'play'; stageIdx = -1; paused = false;
+  }
+
+  function startRun() {
+    Run.on = true; Run.time = 0; Run.splits = []; Run.deaths = 0;
+    Run.silver = 0; Run.silverMax = 0;
+    Run.pb = (Save.data.runs[0] || {}).splits || null;
+    startStage(0);
+  }
+
+  function endRun(finished) {
+    if (!finished) { Run.on = false; return; }
+    const run = { time: Run.time, splits: Run.splits.slice(), deaths: Run.deaths,
+                  silver: Run.silver, silverMax: Run.silverMax,
+                  diff: Save.data.difficulty, when: Date.now() };
+    Run.on = false;
+    Screens.runend.place = Save.recordRun(run);
+    Screens.runend.data = Object.assign({}, run, { pb: Run.pb });
+    goto('runend');
+  }
+
   function stageDone(res) {
+    /* a shared level is not part of anybody's save file */
+    if (stageIdx < 0) {
+      res.name = customDef.name;
+      Screens.results.data = res;
+      Screens.results.custom = true;
+      goto('results');
+      return;
+    }
+    Screens.results.custom = false;
     res.name = STAGES[stageIdx].name;
     Save.record(STAGES[stageIdx].id, res);
     if (stageIdx + 1 > Save.data.unlocked - 1) {
-      Save.data.unlocked = Math.min(STAGES.length, stageIdx + 2);
+      Save.data.unlocked = Math.min(SECRET_IDX, stageIdx + 2);
       Save.save();
     }
-    if (stageIdx >= STAGES.length - 1) { goto('ending'); return; }
+    if (Run.on) {
+      Run.time += res.time; Run.splits.push(res.time);
+      Run.deaths += res.deaths;
+      Run.silver += res.coins; Run.silverMax += res.total;
+      if (stageIdx + 1 >= SECRET_IDX) { endRun(true); return; }
+      startStage(stageIdx + 1);
+      return;
+    }
+    /* the hidden chapter sits past the ending, so it does not replace it */
+    if (stageIdx === SECRET_IDX - 1) { goto('ending'); return; }
     Screens.results.data = res;
     goto('results');
   }
@@ -60,8 +112,16 @@ const Game = (() => {
     if (next === 'startNew') { Save.data.unlocked = Math.max(1, Save.data.unlocked); Save.save(); startStage(0); return; }
     if (next === 'continue') { startStage(Save.data.unlocked - 1); return; }
     if (next.startsWith('startAt:')) { startStage(parseInt(next.slice(8), 10)); return; }
-    if (next === 'next') { startStage(stageIdx + 1); return; }
-    if (next === 'retry') { startStage(stageIdx); return; }
+    if (next === 'runStart') { startRun(); return; }
+    if (next === 'test') { startCustom(Screens.editor.level, 'editor'); return; }
+    if (next === 'next') {
+      if (stageIdx + 1 >= SECRET_IDX) { goto('chapters'); return; }
+      startStage(stageIdx + 1); return;
+    }
+    if (next === 'retry') {
+      if (stageIdx < 0) { startCustom(Screens.editor.level, customBack); return; }
+      startStage(stageIdx); return;
+    }
     goto(next);
   }
 
@@ -72,7 +132,9 @@ const Game = (() => {
       case 'chapters': pauseReturn = 'pause'; screen = 'chapters'; Screens.chapters.enter(); break;
       case 'howto': pauseReturn = 'pause'; screen = 'howto'; break;
       case 'options': pauseReturn = 'pause'; screen = 'options'; break;
-      case 'quit': paused = false; goto('main'); Snd.music('menu'); break;
+      /* walking away from a speedrun ends it - that is the whole point
+         of a clock you cannot stop */
+      case 'quit': paused = false; endRun(false); goto('main'); Snd.music('menu'); break;
     }
   }
 
@@ -119,12 +181,36 @@ const Game = (() => {
       } else {
         const res = (mode === 'play' ? Play : Mini).update(step);
         (mode === 'play' ? Play : Mini).draw(c);
+        if (Run.on) drawRunClock();
         if (res && res.done) stageDone(res);
         if (res && res.failed) { startStage(stageIdx); }
       }
     }
 
     Input.endFrame();
+  }
+
+  /* the running total, plus how far ahead or behind the best run you
+     are on this chapter alone */
+  function drawRunClock() {
+    const st = (mode === 'play' ? Play : Mini).state;
+    const here = (st && st.elapsed) || 0;
+    c.save();
+    rr(c, CFG.W / 2 - 86, 52, 172, 42, 5);
+    c.fillStyle = 'rgba(22,13,28,0.72)'; c.fill();
+    c.lineWidth = 2; c.strokeStyle = PAL.gold; c.stroke();
+    txt(c, fmtTime(Run.time + here), CFG.W / 2, 72,
+        { size: 21, font: FONT.title, fill: PAL.gold, letter: 2 });
+    const pb = Run.pb && Run.pb[stageIdx];
+    if (pb !== undefined && pb !== null) {
+      const dv = here - pb;
+      txt(c, (dv <= 0 ? '-' : '+') + fmtTime(Math.abs(dv)), CFG.W / 2, 88,
+          { size: 12, font: FONT.ui, fill: dv <= 0 ? PAL.teal : PAL.red });
+    } else {
+      txt(c, 'CHAPTER ' + (stageIdx + 1) + ' OF ' + SECRET_IDX, CFG.W / 2, 88,
+          { size: 11, font: FONT.ui, fill: PAL.parchDk, letter: 1 });
+    }
+    c.restore();
   }
 
   /* ---------------- boot ---------------- */
@@ -144,6 +230,34 @@ const Game = (() => {
     /* ?stage=3 drops straight into a chapter, ?screen=options into a menu.
        Handy while building, and handy for replaying one bit.            */
     const q = new URLSearchParams(location.search);
+
+    /* Two people on one keyboard is the whole game. A phone has neither
+       the keys nor the second seat, so say so instead of loading a game
+       nobody there can play. A tap gets in anyway, for the laptop that
+       reports its touchscreen and nothing else. */
+    const fine = !window.matchMedia || window.matchMedia('(pointer: fine)').matches;
+    if (!fine) {
+      goto('desktop');
+      const letIn = () => { if (screen === 'desktop') goto('title'); };
+      addEventListener('pointerdown', letIn, { once: true });
+      addEventListener('keydown', letIn, { once: true });
+      last = performance.now();
+      requestAnimationFrame(frame);
+      return;
+    }
+
+    /* ?lvl=... is somebody else's level, packed into the link itself */
+    if (q.has('lvl')) {
+      const L = Lvl.decode(q.get('lvl'));
+      if (L) {
+        Screens.editor.level = L;
+        startCustom(L, 'main');
+        last = performance.now();
+        requestAnimationFrame(frame);
+        return;
+      }
+    }
+
     if (q.has('stage')) {
       const n = parseInt(q.get('stage'), 10);
       Save.data.unlocked = Math.max(Save.data.unlocked, n + 1);

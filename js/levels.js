@@ -69,6 +69,9 @@ const RUN_END = (x, n, w, gap) => x + n * (w + gap) - gap;
 const arch3a = ARCH('gm1', 1120, 510, ['m1'], 'all', 'timber', false);
 const arch3b = ARCH('gm2', 3100, 510, ['m2', 'm3'], 'any', 'timber');
 
+/* THE HIDDEN CHAPTER : GHOST TRAIL -- floor at y = 490 */
+const archHa = ARCH('h1', 600, 490, ['h1a'], 'all', null, false);
+
 /* CHAPTER 7 : THE LAST SUNSET -- floor at y = 490 */
 const arch7a = ARCH('sg1', 560, 490, ['s1'], 'all', null, false);
 const arch7b = ARCH('sg2', 1500, 490, ['s2a', 's2b'], 'any');
@@ -406,7 +409,115 @@ const STAGES = [
     checkpoints: [{ x: 1100, y: 490 }, { x: 2220, y: 490 },
                   { x: 3020, y: 490 }, { x: 3860, y: 490 }],
     exit: { x: 4150, y: 390, w: 60, h: 100 }
+  },
+
+  /* ============================================================ HIDDEN
+     Earned, not unlocked: every silver dollar in every chapter.
+
+     Built on the co-op level grammar the good two-player games use --
+     intro, teach, test, TWIST, combine, setpiece, cooldown -- and the
+     twist is the one thing this engine can do that nothing else does:
+     across the middle of the map the only floor is ghost timber, and
+     ghost timber holds weight only inside her lantern. She cannot walk
+     it herself; she has to leapfrog the perches above it and keep her
+     light over the piece he is standing on.                          */
+  {
+    id: 'ghost', kind: 'platform', name: 'THE GHOST TRAIL',
+    sub: 'The Chapter Nobody Paid For', theme: 'ghost', music: 'finale',
+    secret: true,
+    story: 'There is a road the maps do not show. You paid for it in silver.',
+    hint: 'Out there the ground is only real inside her light. He walks. She lights.',
+    w: 3900, h: 680, deathY: 780, parTime: 150,
+    spawn: { a: [80, 448], r: [130, 448] },
+
+    solids: [
+      /* --- A : the street, and the crate door, so the hands warm up --- */
+      G(0, 490, 820, 190),
+      archHa.lintel,
+
+      /* --- B : the staggered chain. The ledges are deliberately out of
+             step, so the two of them cannot simply mirror each other --- */
+      G(910, 490, 180, 190),
+      PK(1170, 452, 84, 16),
+      PK(1300, 414, 84, 16),
+      PK(1424, 452, 84, 16),
+      PK(1552, 410, 84, 16),
+      G(1660, 490, 240, 190),
+
+      /* --- C : THE TWIST. Nothing under him but ghost timber, and two
+             perches above it that only she can reach.                --- */
+      PK(1930, 366, 84, 16),        /* +124 over the ledge : hers alone  */
+      PK(2090, 390, 84, 16),        /* her first lighting post           */
+      PK(2250, 390, 84, 16),        /* her second                        */
+      G(2440, 490, 220, 190),
+
+      /* --- D : the climb, where they take turns being the higher one --- */
+      PK(2700, 420, 90, 16),
+      PK(2840, 360, 90, 16),
+      PK(2980, 300, 90, 16),
+      PK(2900, 176, 84, 16),        /* +124 : hers, and the silver is up there */
+
+      /* --- E : cooldown, over rotten boards, and out --- */
+      G(3520, 490, 380, 190)
+    ],
+    phantoms: [
+      { x: 1950, y: 450, w: 100, h: 18 },
+      { x: 2090, y: 450, w: 100, h: 18 },
+      { x: 2230, y: 450, w: 100, h: 18 },
+      { x: 2350, y: 450, w: 90, h: 18 }
+    ],
+    crumbles: [
+      { x: 3120, y: 330, w: 110, h: 16 },
+      { x: 3250, y: 320, w: 110, h: 16 },
+      { x: 3380, y: 330, w: 110, h: 16 }
+    ],
+    movers: [
+      MV(1090, 452, 80, 16, 1090, 372, 3.4)
+    ],
+    gates: [archHa.gate],
+    plates: [PLATE('h1a', 380, 490, 'crate')],
+    crates: [{ x: 210, y: 444, w: 46, h: 46 }],
+    rings: [{ x: 2560, y: 300 }, { x: 3060, y: 210 }, { x: 3300, y: 230 }],
+    hazards: [
+      { x: 700, y: 472, w: 60, h: 18, type: 'spikes' },
+      { x: 1760, y: 472, w: 60, h: 18, type: 'spikes' },
+      { x: 2530, y: 472, w: 60, h: 18, type: 'spikes' }
+    ],
+    coins: [
+      { x: 300, y: 440 }, { x: 470, y: 440 }, { x: 840, y: 430 },
+      { x: 1000, y: 440 }, { x: 1212, y: 402 }, { x: 1342, y: 364 },
+      { x: 1466, y: 402 }, { x: 1594, y: 360 }, { x: 1780, y: 440 },
+      { x: 1972, y: 316 }, { x: 2132, y: 340 }, { x: 2140, y: 400 },
+      { x: 2292, y: 340 }, { x: 2300, y: 400 }, { x: 2560, y: 440 },
+      { x: 2745, y: 370 }, { x: 2885, y: 310 }, { x: 2942, y: 126 },
+      { x: 3175, y: 280 }, { x: 3305, y: 270 }, { x: 3435, y: 280 },
+      { x: 3620, y: 440 }, { x: 3760, y: 440 }
+    ],
+    checkpoints: [{ x: 910, y: 490 }, { x: 1660, y: 490 },
+                  { x: 2440, y: 490 }, { x: 3520, y: 490 }],
+    exit: { x: 3760, y: 390, w: 60, h: 100 }
   }
 ];
+
+/* the hidden chapter is not part of the ladder: it opens only when every
+   silver dollar in every ordinary chapter has been picked up */
+const SECRET_IDX = STAGES.findIndex(s => s.secret);
+function secretEarned() {
+  return STAGES.every((s, i) => {
+    if (s.secret || s.kind !== 'platform') return true;
+    const b = Save.data.best[s.id];
+    return b && b.coins >= (s.coins || []).length;
+  });
+}
+function secretProgress() {
+  let got = 0, all = 0;
+  STAGES.forEach(s => {
+    if (s.secret || s.kind !== 'platform') return;
+    all += (s.coins || []).length;
+    const b = Save.data.best[s.id];
+    got += b ? Math.min(b.coins, (s.coins || []).length) : 0;
+  });
+  return { got, all };
+}
 
 const stageIndex = id => STAGES.findIndex(s => s.id === id);

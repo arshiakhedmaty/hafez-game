@@ -265,11 +265,25 @@ const Ride = (() => {
     const MANE = '#2b1a11';
     const g = t * (speed / 30);                 /* gallop phase */
     const gal = Math.sin(g);
+    /* A gallop is a four-beat asymmetrical gait: near hind, off hind, then
+       near fore, off fore, then every hoof off the ground. The old code
+       put the hind pair half a stride apart, which is a trot. These are
+       the real footfall fractions of one stride.                       */
+    const u = ((g / (Math.PI * 2)) % 1 + 1) % 1;
+    const at = o => Math.PI * 2 * (((u - o) % 1 + 1) % 1);
+    const wave = o => Math.sin(Math.PI * 2 * (u - o));
+    /* the trunk rocks like a see-saw and stretches out before the fore
+       limbs land, and the head answers it a beat late */
+    const rock = wave(0.30) * 0.055;
+    const lift = -wave(0.72) * 1.7;
+    const reach = 1 + wave(0.55) * 0.035;
+    const nod = wave(0.10) * 0.075;
 
     c.save();
     c.translate(x, y);
     c.scale(1.9, 1.9);
-    c.rotate(pitch * 0.5);
+    c.rotate(pitch * 0.5 + (airborne ? 0 : rock));
+    if (!airborne) c.translate(0, lift);
     c.lineCap = 'round'; c.lineJoin = 'round';
 
     /* a leg is hip -> knee -> hoof; the gallop swings the two pairs
@@ -309,8 +323,8 @@ const Ride = (() => {
     };
 
     /* --- off-side legs, behind the barrel --- */
-    hind(-15, -22, g + Math.PI, HIDE_D, 4.2);
-    leg(15, -20, g + Math.PI + 0.55, HIDE_D, 20, 4.0);
+    hind(-15, -22, at(0.13), HIDE_D, 4.2);     /* off hind, second down  */
+    leg(15, -20, at(0.55), HIDE_D, 20, 4.0);   /* off fore, last down    */
 
     /* --- tail, streaming off the dock --- */
     c.beginPath();
@@ -325,7 +339,11 @@ const Ride = (() => {
     c.bezierCurveTo(-32 - gal * 2, -28, -41 - gal * 3, -19, -43 - gal * 2, -3);
     c.lineWidth = 2; c.strokeStyle = '#3a2317'; c.stroke();
 
-    /* --- barrel: round haunch, deep girth, sloped shoulder --- */
+    /* --- barrel: round haunch, deep girth, sloped shoulder. It stretches
+           longest just before the fore limbs land and packs tightest as
+           they leave the ground. --- */
+    c.save();
+    c.scale(reach, 1);
     c.beginPath();
     c.moveTo(-23, -34);
     c.bezierCurveTo(-14, -41, -2, -41, 10, -38);        /* croup and back  */
@@ -361,6 +379,12 @@ const Ride = (() => {
     c.globalAlpha = 0.22;
     ell(c, -13, -27, 8, 9); c.fillStyle = HIDE_L; c.fill();
     c.restore();
+    c.restore();
+
+    /* --- head and neck, swinging a beat behind the body to keep her
+           balance, the way a horse actually carries herself --- */
+    c.save();
+    c.translate(15, -37); c.rotate(nod); c.translate(-15, 37);
 
     /* --- neck: thick at the shoulder, arched, tapering to the poll --- */
     c.beginPath();
@@ -427,11 +451,14 @@ const Ride = (() => {
     c.moveTo(36.5, -64); c.quadraticCurveTo(43, -63, 45.5, -58.5);
     c.lineWidth = 2.6; c.strokeStyle = MANE; c.stroke();
 
-    /* --- tack: bridle, rein into his hands, blanket and saddle --- */
+    /* the bridle is strapped to the head, so it swings with it */
     c.beginPath();
     c.moveTo(41, -62.5); c.lineTo(47.5, -52.5);
     c.moveTo(43, -54); c.lineTo(52, -52.6);
     c.lineWidth = 1.2; c.strokeStyle = '#3a2114'; c.stroke();
+    c.restore();                                /* end of the head swing */
+
+    /* --- tack: bridle, rein into his hands, blanket and saddle --- */
     c.beginPath();
     c.moveTo(49, -53.5);
     c.quadraticCurveTo(33, -47, 14, -34);
@@ -451,8 +478,8 @@ const Ride = (() => {
     c.closePath(); ink(c, '#6b4326', 1.4);
 
     /* --- near-side legs, in front of everything --- */
-    hind(-15, -22, g, HIDE, 4.6);
-    leg(15, -20, g + 0.55, HIDE, 20, 4.4);
+    hind(-15, -22, at(0), HIDE, 4.6);          /* near hind, first down  */
+    leg(15, -20, at(0.42), HIDE, 20, 4.4);     /* near fore              */
     c.restore();
   }
 

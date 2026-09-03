@@ -8,8 +8,9 @@ const Save = (() => {
   const blank = () => ({
     /* every chapter open from the start: this is a game two people play
        on one couch, and being told to come back later is not the point */
-    unlocked: STAGES.length,
+    unlocked: SECRET_IDX,
     best: {},              /* stageId -> {time, coins, deaths} */
+    runs: [],              /* finished speedruns, fastest first    */
     difficulty: 'gunslinger',
     music: 0.55, sfx: 0.75, master: 0.8,
     shake: true, seenIntro: false, totalRevives: 0
@@ -19,7 +20,9 @@ const Save = (() => {
     try {
       const raw = localStorage.getItem(CFG.SAVE_KEY);
       if (raw) d = Object.assign(blank(), JSON.parse(raw));
-      d.unlocked = STAGES.length;   /* honour the open-chapters rule for old saves too */
+      /* every ordinary chapter open, the hidden one still to be paid for */
+      d.unlocked = SECRET_IDX;
+      if (!Array.isArray(d.runs)) d.runs = [];
     } catch (e) { d = blank(); }
     Snd.S.music = d.music; Snd.S.sfx = d.sfx; Snd.S.master = d.master;
     return d;
@@ -32,7 +35,14 @@ const Save = (() => {
     else if (res.coins > b.coins) b.coins = res.coins;
     save();
   }
-  return { get data() { return d; }, load, save, reset, record };
+  function recordRun(run) {
+    d.runs.push(run);
+    d.runs.sort((a, b) => a.time - b.time);
+    d.runs = d.runs.slice(0, 10);
+    save();
+    return d.runs.indexOf(run);      /* -1 once it falls off the bottom */
+  }
+  return { get data() { return d; }, load, save, reset, record, recordRun };
 })();
 
 /* ------------------------------------------------------------------ */
@@ -203,7 +213,8 @@ Screens.title = {
 /* --------------------------- MAIN MENU ---------------------------- */
 Screens.main = {
   sel: 0,
-  items: ['NEW RIDE', 'CONTINUE', 'CHAPTERS', 'HOW TO PLAY', 'OPTIONS', 'CREDITS'],
+  items: ['NEW RIDE', 'CONTINUE', 'CHAPTERS', 'SPEEDRUN', 'LEVEL EDITOR',
+          'RECORDS', 'HOW TO PLAY', 'OPTIONS', 'CREDITS'],
   enter() { Snd.music('menu'); },
   update() {
     const n = this.items.length;
@@ -215,9 +226,12 @@ Screens.main = {
         case 0: return 'difficulty';
         case 1: return Save.data.unlocked > 1 ? 'continue' : 'difficulty';
         case 2: return 'chapters';
-        case 3: return 'howto';
-        case 4: return 'options';
-        case 5: return 'credits';
+        case 3: return 'speedrun';
+        case 4: return 'editor';
+        case 5: return 'records';
+        case 6: return 'howto';
+        case 7: return 'options';
+        case 8: return 'credits';
       }
     }
     return null;
@@ -240,7 +254,7 @@ Screens.main = {
       label: s,
       locked: i === 1 && Save.data.unlocked <= 1
     }));
-    Chrome.list(c, items, this.sel, CFG.W / 2, 190, 52, UIT);
+    Chrome.list(c, items, this.sel, CFG.W / 2, 158, 41, UIT);
 
     Chrome.footer(c, 'W/S or ARROWS to move  ·  ENTER or SPACE to choose');
   }
@@ -291,6 +305,10 @@ Screens.chapters = {
     if (Input.menuDown()) { this.sel = (this.sel + 1) % n; Snd.play('move'); }
     if (Input.menuBack()) { Snd.play('back'); return 'main'; }
     if (Input.menuOk()) {
+      if (STAGES[this.sel].secret && !secretEarned()) {
+        Snd.play('wrong'); FX.shake(4, 0.2);
+        return null;
+      }
       Snd.play('click');
       return 'startAt:' + this.sel;
     }
@@ -303,20 +321,20 @@ Screens.chapters = {
     txt(c, 'CHAPTERS', CFG.W / 2, 58, { size: 26, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 5, letter: 3 });
 
     STAGES.forEach((s, i) => {
-      const y = 128 + i * 54;
+      const y = 116 + i * 48;
       const on = i === this.sel;
-      const open = i < Save.data.unlocked;
+      const open = s.secret ? secretEarned() : i < Save.data.unlocked;
       const best = Save.data.best[s.id];
       c.save();
-      rr(c, 130, y - 21, CFG.W - 260, 42, 5);
+      rr(c, 130, y - 19, CFG.W - 260, 38, 5);
       c.fillStyle = on ? 'rgba(226,176,67,0.16)' : 'rgba(22,13,28,0.45)'; c.fill();
       c.lineWidth = 2; c.strokeStyle = on ? PAL.gold : 'rgba(239,220,176,0.22)'; c.stroke();
       txt(c, String(i + 1).padStart(2, '0'), 162, y,
           { size: 18, font: FONT.title, fill: open ? PAL.gold : 'rgba(239,220,176,0.3)' });
-      txt(c, open ? s.name : 'LOCKED', 200, y,
+      txt(c, open ? s.name : (s.secret ? '? ? ?' : 'LOCKED'), 200, y,
           { size: 19, font: FONT.title, fill: open ? (on ? PAL.gold : PAL.parch) : 'rgba(239,220,176,0.3)',
             align: 'left', letter: 1 });
-      txt(c, s.kind === 'platform' ? 'STAGE' : 'SHOWDOWN', 560, y,
+      txt(c, s.secret ? 'HIDDEN' : s.kind === 'platform' ? 'STAGE' : 'SHOWDOWN', 560, y,
           { size: 12, font: FONT.ui, fill: PAL.parchDk, align: 'left' });
       if (best) {
         txt(c, fmtTime(best.time), CFG.W - 250, y, { size: 14, font: FONT.ui, fill: PAL.teal, align: 'right' });
@@ -331,6 +349,12 @@ Screens.chapters = {
       }
       c.restore();
     });
+    const sp = secretProgress();
+    txt(c, secretEarned()
+          ? 'EVERY DOLLAR FOUND  ·  THE GHOST TRAIL IS OPEN'
+          : 'THE LAST CHAPTER COSTS EVERY SILVER DOLLAR  ·  ' + sp.got + ' / ' + sp.all,
+        CFG.W / 2, CFG.H - 46,
+        { size: 13, font: FONT.ui, fill: secretEarned() ? PAL.gold : PAL.parchDk, letter: 1 });
     Chrome.footer(c, 'ENTER to ride  ·  ESC to go back');
   }
 };
@@ -566,9 +590,16 @@ Screens.pause = {
 
 /* --------------------------- RESULTS ------------------------------ */
 Screens.results = {
-  data: null, t: 0, sel: 0,
+  data: null, t: 0, sel: 0, custom: false,
   items: ['NEXT', 'RETRY', 'CHAPTERS'],
-  enter() { this.t = 0; this.sel = 0; Snd.music('victory'); },
+  enter() {
+    this.t = 0; this.sel = 0;
+    /* somebody else's level is not a chapter: there is no next one, and
+       the way back is to the sheet you were drawing on */
+    this.items = this.custom ? ['RIDE IT AGAIN', 'BACK TO THE EDITOR', 'MENU']
+                             : ['NEXT', 'RETRY', 'CHAPTERS'];
+    Snd.music('victory');
+  },
   update(dt) {
     this.t += dt;
     const n = this.items.length;
@@ -578,7 +609,8 @@ Screens.results = {
     if (Input.menuDown()) { this.sel = (this.sel + 1) % n; Snd.play('move'); }
     if (Input.menuOk() && this.t > 0.6) {
       Snd.play('click');
-      return ['next', 'retry', 'chapters'][this.sel];
+      return this.custom ? ['retry', 'editor', 'main'][this.sel]
+                         : ['next', 'retry', 'chapters'][this.sel];
     }
     return null;
   },
@@ -683,3 +715,215 @@ function toggleFullscreen() {
   if (!document.fullscreenElement) { if (el.requestFullscreen) el.requestFullscreen(); }
   else if (document.exitFullscreen) document.exitFullscreen();
 }
+
+/* =====================================================================
+   SPEEDRUN  --  all seven ordinary chapters, one clock, no chapter
+   select. The clock only counts time inside a stage, so menus, intro
+   cards and the pause screen are all free.
+   ===================================================================== */
+Screens.speedrun = {
+  sel: 0,
+  items: ['START THE CLOCK', 'BACK'],
+  enter() { this.sel = 0; Snd.music('menu'); },
+  update() {
+    const n = this.items.length;
+    if (Input.menuUp()) { this.sel = (this.sel + n - 1) % n; Snd.play('move'); }
+    if (Input.menuDown()) { this.sel = (this.sel + 1) % n; Snd.play('move'); }
+    if (Input.menuBack()) { Snd.play('back'); return 'main'; }
+    if (Input.menuOk()) {
+      Snd.play('click');
+      return this.sel === 0 ? 'runStart' : 'main';
+    }
+    return null;
+  },
+  draw(c) {
+    Sky.draw(c, 'duel', 900, 0, CFG.W, CFG.H, UIT);
+    c.fillStyle = 'rgba(22,13,28,0.62)'; c.fillRect(0, 0, CFG.W, CFG.H);
+    Chrome.woodSign(c, CFG.W / 2 - 190, 30, 380, 54);
+    txt(c, 'SPEEDRUN', CFG.W / 2, 58,
+        { size: 26, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 5, letter: 3 });
+
+    const best = Save.data.runs[0];
+    const rules = [
+      'Seven chapters, back to back, on one clock.',
+      'The clock runs only while you are inside a stage - menus are free.',
+      'A death costs you the time it costs you. Nothing else.',
+      'Quitting to the menu ends the run.'
+    ];
+    rules.forEach((r, i) =>
+      txt(c, r, CFG.W / 2, 132 + i * 26, { size: 15, font: FONT.ui, fill: PAL.parch }));
+
+    txt(c, 'DIFFICULTY  ' + DIFF[Save.data.difficulty].name, CFG.W / 2, 262,
+        { size: 15, font: FONT.title, fill: LOOK.rojina.accent, letter: 2 });
+    txt(c, best ? 'YOUR BEST  ' + fmtTime(best.time) : 'NO RUN ON THE BOOKS YET',
+        CFG.W / 2, 296,
+        { size: 20, font: FONT.title, fill: PAL.gold, stroke: PAL.ink, lw: 4, letter: 2 });
+
+    Chrome.list(c, this.items, this.sel, CFG.W / 2, 366, 46, UIT, { w: 340 });
+    Chrome.footer(c, 'ENTER to choose  ·  ESC to go back');
+  }
+};
+
+/* =====================================================================
+   RECORDS  --  the speedrun book on the left, the chapter bests and the
+   silver count that buys the hidden chapter on the right.
+   ===================================================================== */
+Screens.records = {
+  update() {
+    if (Input.menuBack() || Input.menuOk()) { Snd.play('back'); return 'main'; }
+    return null;
+  },
+  draw(c) {
+    Sky.draw(c, 'canyon', 2100, 0, CFG.W, CFG.H, UIT);
+    c.fillStyle = 'rgba(22,13,28,0.66)'; c.fillRect(0, 0, CFG.W, CFG.H);
+    Chrome.woodSign(c, CFG.W / 2 - 170, 24, 340, 50);
+    txt(c, 'RECORDS', CFG.W / 2, 50,
+        { size: 24, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 5, letter: 3 });
+
+    /* ---- full runs ---- */
+    txt(c, 'FULL RUNS', 70, 108,
+        { size: 16, font: FONT.title, fill: PAL.gold, align: 'left', letter: 2 });
+    const runs = Save.data.runs || [];
+    if (!runs.length)
+      txt(c, 'nobody has finished the whole trail yet', 70, 140,
+          { size: 13, font: FONT.ui, fill: PAL.parchDk, align: 'left' });
+    runs.slice(0, 8).forEach((r, i) => {
+      const y = 140 + i * 32;
+      c.save();
+      rr(c, 62, y - 14, 400, 28, 4);
+      c.fillStyle = i ? 'rgba(22,13,28,0.45)' : 'rgba(226,176,67,0.16)'; c.fill();
+      c.lineWidth = 1.5; c.strokeStyle = i ? 'rgba(239,220,176,0.18)' : PAL.gold; c.stroke();
+      txt(c, String(i + 1), 80, y, { size: 14, font: FONT.title, fill: PAL.gold });
+      txt(c, fmtTime(r.time), 112, y,
+          { size: 15, font: FONT.title, fill: i ? PAL.parch : PAL.gold, align: 'left' });
+      txt(c, (DIFF[r.diff] || DIFF.gunslinger).name, 216, y,
+          { size: 11, font: FONT.ui, fill: PAL.parchDk, align: 'left' });
+      txt(c, 'SILVER ' + r.silver, 340, y,
+          { size: 11, font: FONT.ui, fill: PAL.gold, align: 'left' });
+      txt(c, r.deaths + ' DOWN', 452, y,
+          { size: 11, font: FONT.ui, fill: LOOK.arshia.accent, align: 'right' });
+      c.restore();
+    });
+
+    /* ---- chapters ---- */
+    txt(c, 'CHAPTERS', 508, 108,
+        { size: 16, font: FONT.title, fill: PAL.gold, align: 'left', letter: 2 });
+    STAGES.forEach((st, i) => {
+      const y = 136 + i * 26;
+      const b = Save.data.best[st.id];
+      const open = st.secret ? secretEarned() : true;
+      txt(c, open ? st.name : '? ? ?', 508, y,
+          { size: 13, font: FONT.title,
+            fill: open ? PAL.parch : 'rgba(239,220,176,0.3)', align: 'left' });
+      txt(c, b ? fmtTime(b.time) : '--', CFG.W - 150, y,
+          { size: 13, font: FONT.ui, fill: b ? PAL.teal : PAL.parchDk, align: 'right' });
+      if (st.kind === 'platform')
+        txt(c, (b ? b.coins : 0) + '/' + (st.coins || []).length, CFG.W - 62, y,
+            { size: 12, font: FONT.ui, fill: PAL.gold, align: 'right' });
+    });
+
+    const sp = secretProgress();
+    const k = sp.all ? sp.got / sp.all : 0;
+    rr(c, 508, 372, CFG.W - 570, 12, 6);
+    c.fillStyle = 'rgba(22,13,28,0.7)'; c.fill();
+    rr(c, 510, 374, (CFG.W - 574) * k, 8, 4);
+    c.fillStyle = secretEarned() ? PAL.gold : PAL.teal; c.fill();
+    txt(c, secretEarned() ? 'THE GHOST TRAIL IS OPEN'
+                          : 'SILVER TOWARD THE GHOST TRAIL  ' + sp.got + ' / ' + sp.all,
+        508, 402, { size: 12, font: FONT.ui, fill: PAL.parchDk, align: 'left' });
+
+    drawPortrait(c, 'arshia', 110, 448, 44, 'normal', UIT);
+    drawPortrait(c, 'rojina', 184, 448, 44, 'happy', UIT + 0.7);
+    txt(c, 'REVIVED EACH OTHER ' + (Save.data.totalRevives || 0) + ' TIMES', 232, 448,
+        { size: 13, font: FONT.ui, fill: LOOK.rojina.accent, align: 'left' });
+
+    Chrome.footer(c, 'ESC or ENTER to go back');
+  }
+};
+
+/* =====================================================================
+   RUN COMPLETE  --  the splits, and whether the book changed.
+   ===================================================================== */
+Screens.runend = {
+  data: null, place: -1, t: 0,
+  enter() { this.t = 0; Snd.music('victory'); },
+  update(dt) {
+    this.t += dt;
+    if (this.t > 0.6 && (Input.menuOk() || Input.menuBack())) { Snd.play('click'); return 'main'; }
+    return null;
+  },
+  draw(c) {
+    const d = this.data || { splits: [], time: 0, silver: 0, silverMax: 0, deaths: 0 };
+    Sky.draw(c, 'finale', 1400, 0, CFG.W, CFG.H, UIT);
+    c.fillStyle = 'rgba(22,13,28,0.66)'; c.fillRect(0, 0, CFG.W, CFG.H);
+
+    txt(c, 'RUN COMPLETE', CFG.W / 2, 56,
+        { size: 28, font: FONT.title, fill: PAL.gold, stroke: PAL.ink, lw: 6, letter: 3 });
+    txt(c, fmtTime(d.time), CFG.W / 2, 108,
+        { size: 48, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 7, letter: 3 });
+    txt(c, this.place === 0 ? 'A NEW BEST'
+         : this.place > 0 ? 'NUMBER ' + (this.place + 1) + ' IN THE BOOK'
+         : 'NOT FAST ENOUGH FOR THE BOOK',
+        CFG.W / 2, 142,
+        { size: 15, font: FONT.title, fill: this.place === 0 ? PAL.gold : PAL.parchDk, letter: 2 });
+
+    (d.splits || []).forEach((sp, i) => {
+      const y = 186 + i * 29;
+      const st = STAGES[i];
+      c.save();
+      rr(c, 220, y - 13, 520, 26, 4);
+      c.fillStyle = 'rgba(22,13,28,0.5)'; c.fill();
+      txt(c, st ? st.name : '', 236, y,
+          { size: 13, font: FONT.title, fill: PAL.parch, align: 'left' });
+      txt(c, fmtTime(sp), 640, y,
+          { size: 13, font: FONT.ui, fill: PAL.teal, align: 'right' });
+      const pb = d.pb && d.pb[i];
+      if (pb !== undefined && pb !== null) {
+        const dv = sp - pb;
+        txt(c, (dv <= 0 ? '-' : '+') + fmtTime(Math.abs(dv)), 726, y,
+            { size: 12, font: FONT.ui, fill: dv <= 0 ? PAL.teal : PAL.red, align: 'right' });
+      }
+      c.restore();
+    });
+
+    txt(c, 'SILVER ' + d.silver + ' / ' + d.silverMax + '   ·   ' + d.deaths + ' TIMES DOWN',
+        CFG.W / 2, CFG.H - 62, { size: 14, font: FONT.ui, fill: PAL.gold });
+    Chrome.footer(c, 'ENTER to go back to the menu');
+  }
+};
+
+/* =====================================================================
+   This is a two-player game for one laptop keyboard. On anything with
+   no real pointer and no keyboard there is nothing to play, so say so
+   plainly rather than handing someone a game they cannot control.
+   ===================================================================== */
+Screens.desktop = {
+  update() { return null; },
+  draw(c) {
+    Sky.draw(c, 'gulch', UIT * 8, 0, CFG.W, CFG.H, UIT);
+    c.fillStyle = 'rgba(22,13,28,0.62)'; c.fillRect(0, 0, CFG.W, CFG.H);
+    const gy = CFG.H - 96;
+    c.fillStyle = PAL.ground; c.fillRect(0, gy, CFG.W, 96);
+    c.fillStyle = PAL.groundTop; c.fillRect(0, gy, CFG.W, 4);
+    drawChar(c, 'arshia', { x: CFG.W / 2 - 70, y: gy, face: 1, anim: 'idle', t: UIT, scale: 1.9 });
+    drawChar(c, 'rojina', { x: CFG.W / 2 + 70, y: gy, face: -1, anim: 'idle',
+                            t: UIT + 0.8, scale: 1.9, blinkSeed: 0.45, expr: 'happy' });
+    Chrome.woodSign(c, CFG.W / 2 - 250, 40, 500, 64);
+    txt(c, CFG.TITLE, CFG.W / 2, 74,
+        { size: 34, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 5, letter: 3 });
+    txt(c, 'THIS ONE NEEDS A LAPTOP', CFG.W / 2, 156,
+        { size: 25, font: FONT.title, fill: PAL.gold, stroke: PAL.ink, lw: 5, letter: 2 });
+    ['Two people, one keyboard, sitting next to each other.',
+     'ARSHIA rides on W A S D.   ROJINA rides on the arrow keys.',
+     'There is no touch version, and there was never meant to be.'
+    ].forEach((l, i) =>
+      txt(c, l, CFG.W / 2, 198 + i * 28, { size: 15, font: FONT.ui, fill: PAL.parch }));
+    txt(c, 'open this link on a laptop', CFG.W / 2, 300,
+        { size: 14, font: FONT.ui, fill: LOOK.rojina.accent, letter: 2 });
+    const b = (Math.sin(UIT * 3) + 1) / 2;
+    c.save(); c.globalAlpha = 0.35 + b * 0.5;
+    txt(c, 'tap anyway to look around', CFG.W / 2, CFG.H - 120,
+        { size: 13, font: FONT.ui, fill: PAL.parchDk });
+    c.restore();
+  }
+};

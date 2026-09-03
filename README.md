@@ -4,7 +4,13 @@
 بدون موتور بازی، بدون فایل تصویری، بدون فایل صوتی — همه‌چیز با کد کشیده و
 ساخته می‌شود.
 
-**بازی آنلاین:** https://hafez-game-arshiakhedmaty-1474s-projects.vercel.app
+## ▶ بازی آنلاین
+
+**https://arshiakhedmaty.github.io/hafez-game/**
+
+(آینه: https://hafez-game-arshiakhedmaty-1474s-projects.vercel.app)
+
+هیچ نصبی لازم نیست — لینک را باز کنید و دو نفری روی یک کیبورد بازی کنید.
 
 ---
 

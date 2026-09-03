@@ -60,7 +60,7 @@ const src = [
   'js/config.js', 'js/utils.js', 'js/levels.js'
 ].map(read).join('\n;\n')
   + '\n;\n' + stubs + '\n;\n'
-  + [ 'js/platformer.js', 'js/minigames.js' ].map(read).join('\n;\n')
+  + [ 'js/platformer.js', 'js/minigames.js', 'js/ride.js' ].map(read).join('\n;\n')
   + '\n;\nreturn { CFG, STAGES, Play, Duel, Vault, Ride, Mini, LOOK, DIFF };';
 
 const API = new Function('__held', '__pressed', src)(held, pressed);

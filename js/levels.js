@@ -334,9 +334,9 @@ const STAGES = [
   {
     id: 'ride', kind: 'ride', name: 'RIDE OR DIE',
     sub: 'Interlude', theme: 'canyon', music: 'chase',
-    story: 'One horse. Two of them. A whole territory that wanted them back.',
-    hint: 'He steers and jumps. She aims and fires. Say what you see.',
-    distance: 2600, parTime: 0
+    story: 'One horse, two of them, and a long road back to their own front door.',
+    hint: 'He jumps the horse over what is on the trail. She shoots the birds out of the air.',
+    distance: 7200, parTime: 0
   },
 
   /* ================================================================= 7 */

@@ -69,6 +69,7 @@ const Game = (() => {
     switch (next) {
       case 'resume': paused = false; break;
       case 'restart': paused = false; startStage(stageIdx); break;
+      case 'chapters': pauseReturn = 'pause'; screen = 'chapters'; Screens.chapters.enter(); break;
       case 'howto': pauseReturn = 'pause'; screen = 'howto'; break;
       case 'options': pauseReturn = 'pause'; screen = 'options'; break;
       case 'quit': paused = false; goto('main'); Snd.music('menu'); break;
@@ -107,6 +108,9 @@ const Game = (() => {
           const nx = sc.update(dt);
           sc.draw(c);
           if (nx === 'main') { screen = pauseReturn; pauseReturn = null; Screens.pause.enter(); }
+          /* CHAPTERS opened from the pause menu can jump straight into
+             another stage, so it has to leave the pause behind it. */
+          else if (nx) { pauseReturn = null; paused = false; routeScreen(nx); }
         } else {
           const nx = Screens.pause.update(dt);
           Screens.pause.draw(c);

@@ -131,6 +131,31 @@ const Sky = (() => {
     c.restore();
   }
 
+  /* ---- a rock spire: the country past the last town ---- */
+  function spire(c, x, gy, s2, col) {
+    c.save();
+    c.translate(x, gy); c.scale(s2, s2);
+    c.beginPath();
+    c.moveTo(-13, 0); c.lineTo(-8, -54); c.lineTo(-2, -70);
+    c.lineTo(4, -52); c.lineTo(11, -62); c.lineTo(15, -30); c.lineTo(19, 0);
+    c.closePath();
+    c.fillStyle = col; c.fill();
+    c.restore();
+  }
+
+  /* ---- the border fence they have been riding toward all game ---- */
+  function borderFence(c, x, gy, s2, col) {
+    c.save();
+    c.translate(x, gy); c.scale(s2, s2);
+    c.fillStyle = col;
+    c.fillRect(-2, -40, 4, 40);
+    c.save(); c.rotate(0.06);
+    c.fillRect(-26, -34, 52, 3);
+    c.fillRect(-26, -22, 52, 3);
+    c.restore();
+    c.restore();
+  }
+
   /* ---- main entry ---- */
   function draw(c, theme, camX, camY, w, h, t) {
     const stops = THEMES[theme] || THEMES.gulch;
@@ -148,8 +173,34 @@ const Sky = (() => {
       return;
     }
 
+    /* the finale is later in the day than anything before it: the sun is
+       already going down behind the ridge and the first stars are out */
+    const fin = theme === 'finale';
+    if (fin) {
+      const RS = srand(5);
+      c.save();
+      for (let i = 0; i < 70; i++) {
+        const sx = (RS() * 2200 - camX * 0.03) % 2200;
+        const sy = RS() * h * 0.46;
+        c.globalAlpha = 0.25 + RS() * 0.6 * (1 - sy / (h * 0.5));
+        c.fillStyle = '#f4e6c8';
+        c.fillRect(sx, sy, 1.6, 1.6);
+      }
+      c.restore();
+      /* a thin moon, already up */
+      const mx = w * 0.22 - camX * 0.015, my = h * 0.17;
+      c.save();
+      c.globalAlpha = 0.13;
+      ell(c, mx, my, 54, 54); c.fillStyle = '#ffeec4'; c.fill();
+      c.globalAlpha = 1;
+      ell(c, mx, my, 22, 22); c.fillStyle = '#f7e6bd'; c.fill();
+      c.globalCompositeOperation = 'destination-out';
+      ell(c, mx + 9, my - 5, 19, 19); c.fill();
+      c.restore();
+    }
+
     /* ---- the sun, low and huge ---- */
-    const sunX = w * 0.68 - camX * 0.02, sunY = h * 0.58;
+    const sunX = w * 0.68 - camX * 0.02, sunY = h * (fin ? 0.71 : 0.58);
     c.save();
     for (let i = 7; i > 0; i--) {
       c.globalAlpha = 0.045;
@@ -179,8 +230,11 @@ const Sky = (() => {
     drawBand(c, mesaBand(23, 1600, 100, 46, 100), camX, 0.13, horizon + 22, 130, PAL.mesaMid, w);
 
     /* ---- town silhouette ---- */
-    if (theme === 'gulch' || theme === 'duel' || theme === 'finale')
+    if (theme === 'gulch' || theme === 'duel')
       townRow(c, camX, 0.22, horizon + 44, w, PAL.mesaNear, 5, 1);
+    else if (fin)
+      /* no town out here - just the ridge they have to get over */
+      drawBand(c, mesaBand(59, 1700, 100, 74, 60), camX, 0.22, horizon + 30, 140, PAL.mesaNear, w);
 
     drawBand(c, mesaBand(37, 1400, 100, 30, 90), camX, 0.30, horizon + 74, 90, PAL.mesaNear, w);
 
@@ -192,12 +246,18 @@ const Sky = (() => {
       const m = ((sx % 3000) + 3000) % 3000;
       if (m > w + 60) continue;
       const s = 0.6 + R2() * 0.5;
-      if (R2() < 0.7) cactus(c, m, horizon + 96, s, '#3a1c3c');
+      if (fin) {
+        /* the last mile: spires and the border fence, no town furniture */
+        const r = R2();
+        if (r < 0.45) spire(c, m, horizon + 96, s * 1.15, '#2c1433');
+        else if (r < 0.8) borderFence(c, m, horizon + 96, s, '#3a1c3c');
+        else pole(c, m, horizon + 96, s, '#33183a');
+      } else if (R2() < 0.7) cactus(c, m, horizon + 96, s, '#3a1c3c');
       else pole(c, m, horizon + 96, s, '#33183a');
     }
   }
 
-  return { draw, cactus, pole, townRow, THEMES };
+  return { draw, cactus, pole, spire, borderFence, townRow, THEMES };
 })();
 
 /* ---------------------------------------------------------------------

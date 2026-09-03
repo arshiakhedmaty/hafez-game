@@ -23,7 +23,7 @@ fs.mkdirSync(dist, { recursive: true });
 const JS = [
   'js/config.js', 'js/utils.js', 'js/input.js', 'js/audio.js', 'js/art.js',
   'js/particles.js', 'js/scenery.js', 'js/levels.js', 'js/platformer.js',
-  'js/minigames.js', 'js/ui.js', 'js/game.js'
+  'js/minigames.js', 'js/ride.js', 'js/ui.js', 'js/game.js'
 ];
 
 /* the bundle normally boots on DOMContentLoaded; once it is inflated that

@@ -536,7 +536,7 @@ Screens.credits = {
 /* --------------------------- PAUSE -------------------------------- */
 Screens.pause = {
   sel: 0,
-  items: ['RESUME', 'RESTART STAGE', 'HOW TO PLAY', 'OPTIONS', 'QUIT TO MENU'],
+  items: ['RESUME', 'RESTART STAGE', 'CHAPTERS', 'HOW TO PLAY', 'OPTIONS', 'QUIT TO MENU'],
   enter() { this.sel = 0; },
   update() {
     const n = this.items.length;
@@ -546,7 +546,7 @@ Screens.pause = {
        it here too would consume the same press and un-pause instantly. */
     if (Input.menuOk()) {
       Snd.play('click');
-      return ['resume', 'restart', 'howto', 'options', 'quit'][this.sel];
+      return ['resume', 'restart', 'chapters', 'howto', 'options', 'quit'][this.sel];
     }
     return null;
   },
@@ -555,7 +555,7 @@ Screens.pause = {
     c.fillStyle = 'rgba(12,7,16,0.78)'; c.fillRect(0, 0, CFG.W, CFG.H);
     Chrome.woodSign(c, CFG.W / 2 - 150, 62, 300, 56);
     txt(c, 'HOLD UP', CFG.W / 2, 92, { size: 27, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 5, letter: 3 });
-    Chrome.list(c, this.items, this.sel, CFG.W / 2, 200, 50, UIT, { w: 320 });
+    Chrome.list(c, this.items, this.sel, CFG.W / 2, 182, 46, UIT, { w: 320 });
     /* the two of them waiting it out */
     drawPortrait(c, 'arshia', CFG.W / 2 - 220, CFG.H - 120, 64, 'normal', UIT);
     drawPortrait(c, 'rojina', CFG.W / 2 + 220, CFG.H - 120, 64, 'normal', UIT + 0.7);

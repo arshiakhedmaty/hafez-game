@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HAFEZ GAME — Face Study</title>
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;background:#1b1026;color:#efdcb0;
+            font-family:"Special Elite","Courier New",monospace}
+  #wrap{display:flex;justify-content:center;padding:8px}
+  canvas{background:#2a1836;border:2px solid #7a4a2b;border-radius:5px}
+  .k{text-align:center;font-size:12px;opacity:.7;padding:6px}
+  b{color:#e2b043}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv" width="700" height="470"></canvas></div>
+<div class="k"><b>SPACE</b> expression &nbsp;·&nbsp; <b>H</b> hide hair/hat &nbsp;·&nbsp; <b>G</b> construction lines</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/art.js"></script>
+<script>
+const cv=document.getElementById('cv'), c=cv.getContext('2d');
+const EXPR=['normal','happy','love','determined','scared','wink'];
+let ei=0, T=0, bare=false, guides=false;
+addEventListener('keydown',e=>{
+  if(e.code==='Space'){ei=(ei+1)%EXPR.length;e.preventDefault();}
+  if(e.code==='KeyH')bare=!bare;
+  if(e.code==='KeyG')guides=!guides;
+});
+
+function frame(dt){
+  T+=dt;
+  c.clearRect(0,0,cv.width,cv.height);
+  const g=c.createLinearGradient(0,0,0,cv.height);
+  g.addColorStop(0,'#3a2450'); g.addColorStop(1,'#2a1836');
+  c.fillStyle=g; c.fillRect(0,0,cv.width,cv.height);
+
+  const expr=EXPR[ei], K=13;
+  [['arshia',185,1],['rojina',515,-1]].forEach(([who,x,face])=>{
+    const L=LOOK[who];
+    /* put the head centre at y=230 */
+    const feet = 230 + L.height*0.83*K;
+    c.save();
+    c.beginPath(); c.rect(x-160, 40, 320, 380); c.clip();
+    drawChar(c, who, { x, y: feet, face, anim:'idle', t: T+(who==='rojina'?0.7:0),
+                       expr, scale:K, shadow:false, blinkSeed: who==='rojina'?0.45:0,
+                       hideHair: bare });
+    c.restore();
+    txt(c, L.name, x, 442, {size:16, font:FONT.title, fill:L.accent, letter:2});
+  });
+
+  txt(c, expr.toUpperCase(), cv.width/2, 26, {size:18, font:FONT.title, fill:PAL.gold, letter:3});
+}
+let last=performance.now();
+(function loop(n){ const dt=Math.min(.05,(n-last)/1000); last=n; frame(dt); requestAnimationFrame(loop); })(performance.now());
+</script>
+</body>
+</html>

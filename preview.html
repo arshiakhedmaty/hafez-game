@@ -23,7 +23,7 @@
   <h1>HAFEZ GAME</h1>
   <p class="sub">character design preview &mdash; ARSHIA &amp; ROJINA</p>
 </header>
-<div id="wrap"><canvas id="cv" width="1100" height="620"></canvas></div>
+<div id="wrap"><canvas id="cv" width="1280" height="760"></canvas></div>
 <div class="keys">press <b>SPACE</b> to cycle expressions &nbsp;·&nbsp; <b>1&ndash;6</b> to change the pose</div>
 
 <script src="js/config.js"></script>
@@ -71,50 +71,58 @@ function frame(dt) {
   T += dt;
   sky();
 
-  const groundY = cv.height - 92;
+  const groundY = cv.height - 96;
   const expr = EXPR[ei], anim = ANIMS[ai];
 
-  /* ---- full body, large ---- */
-  const S = 5.4;
-  const pairX = cv.width * 0.36;
-
-  /* closeness drives her pendant glow — show it fully lit here */
-  drawChar(c, 'arshia', { x: pairX - 82, y: groundY, face: 1, anim, t: T, expr,
+  /* ---- full body, big enough to actually judge ---- */
+  const S = 7.2;
+  drawChar(c, 'arshia', { x: 250, y: groundY, face: 1, anim, t: T, expr,
                           scale: S, speed: 1, blinkSeed: 0 });
-  drawChar(c, 'rojina', { x: pairX + 82, y: groundY, face: -1, anim, t: T + 0.7, expr,
-                          scale: S, speed: 1, blinkSeed: 0.45, closeness: 0.75 });
+  drawChar(c, 'rojina', { x: 470, y: groundY, face: -1, anim, t: T + 0.7, expr,
+                          scale: S, speed: 1, blinkSeed: 0.45, closeness: 0.8 });
 
-  /* name plaques under each of them */
-  [['ARSHIA', pairX - 82, LOOK.arshia.accent], ['ROJINA', pairX + 82, LOOK.rojina.accent]]
+  [['ARSHIA', 250, LOOK.arshia.accent], ['ROJINA', 470, LOOK.rojina.accent]]
     .forEach(([n, x, col]) => {
       c.save();
-      const w = 132, h = 30;
-      rr(c, x - w / 2, groundY + 14, w, h, 5);
+      const w = 120, h = 28;
+      rr(c, x - w / 2, groundY + 16, w, h, 5);
       c.fillStyle = 'rgba(22,13,28,0.7)'; c.fill();
       c.lineWidth = 2; c.strokeStyle = col; c.stroke();
-      txt(c, n, x, groundY + 30, { size: 17, font: FONT.title, fill: col, letter: 2 });
+      txt(c, n, x, groundY + 31, { size: 15, font: FONT.title, fill: col, letter: 2 });
       c.restore();
     });
 
-  /* ---- portrait busts, right column ---- */
-  const px = cv.width * 0.80;
-  panel(px - 150, 60, 300, 440);
-  txt(c, 'PORTRAITS', px, 88, { size: 15, font: FONT.title, fill: PAL.parch, letter: 3 });
-
-  drawPortrait(c, 'arshia', px, 190, 74, expr, T);
-  txt(c, LOOK.arshia.nameFa + '  /  ARSHIA', px, 268,
-      { size: 15, font: FONT.body, fill: LOOK.arshia.accent });
-
-  drawPortrait(c, 'rojina', px, 380, 74, expr, T + 0.7);
-  txt(c, LOOK.rojina.nameFa + '  /  ROJINA', px, 470,
-      { size: 15, font: FONT.body, fill: LOOK.rojina.accent });
+  /* ---- heads, blown right up: this is where the craft shows ---- */
+  panel(700, 56, 546, 400);
+  txt(c, 'HEADS AT 11x', 973, 82, { size: 14, font: FONT.title, fill: PAL.parch, letter: 3 });
+  c.save();
+  c.beginPath(); c.rect(704, 96, 538, 352); c.clip();
+  /* park the head in the middle of the box: the head centre sits
+     H * 0.83 above the feet, so push the feet down by that much */
+  const HZ = 11, boxMid = 250;
+  const feet = (who, k) => boxMid + LOOK[who].height * 0.83 * k;
+  drawChar(c, 'arshia', { x: 838, y: feet('arshia', HZ), face: 1, anim: 'idle',
+                          t: T, expr, scale: HZ, shadow: false, blinkSeed: 0 });
+  drawChar(c, 'rojina', { x: 1112, y: feet('rojina', HZ), face: -1, anim: 'idle',
+                          t: T + 0.7, expr, scale: HZ, shadow: false, blinkSeed: 0.45 });
+  c.restore();
 
   /* ---- read-out ---- */
-  panel(24, 60, 250, 132);
-  txt(c, 'EXPRESSION', 149, 86, { size: 13, font: FONT.title, fill: PAL.parchDk, letter: 2 });
-  txt(c, expr.toUpperCase(), 149, 112, { size: 22, font: FONT.title, fill: PAL.gold });
-  txt(c, 'POSE', 149, 144, { size: 13, font: FONT.title, fill: PAL.parchDk, letter: 2 });
-  txt(c, anim.toUpperCase(), 149, 170, { size: 22, font: FONT.title, fill: PAL.gold });
+  panel(24, 56, 240, 128);
+  txt(c, 'EXPRESSION', 144, 80, { size: 12, font: FONT.title, fill: PAL.parchDk, letter: 2 });
+  txt(c, expr.toUpperCase(), 144, 106, { size: 21, font: FONT.title, fill: PAL.gold });
+  txt(c, 'POSE', 144, 138, { size: 12, font: FONT.title, fill: PAL.parchDk, letter: 2 });
+  txt(c, anim.toUpperCase(), 144, 164, { size: 21, font: FONT.title, fill: PAL.gold });
+
+  /* ---- portraits ---- */
+  panel(700, 476, 546, 236);
+  txt(c, 'PORTRAITS', 973, 500, { size: 13, font: FONT.title, fill: PAL.parch, letter: 3 });
+  drawPortrait(c, 'arshia', 840, 600, 82, expr, T);
+  drawPortrait(c, 'rojina', 1110, 600, 82, expr, T + 0.7);
+  txt(c, LOOK.arshia.nameFa + '  ARSHIA', 840, 690,
+      { size: 13, font: FONT.body, fill: LOOK.arshia.accent });
+  txt(c, LOOK.rojina.nameFa + '  ROJINA', 1110, 690,
+      { size: 13, font: FONT.body, fill: LOOK.rojina.accent });
 }
 
 let last = performance.now();

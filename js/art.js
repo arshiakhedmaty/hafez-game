@@ -55,9 +55,27 @@ function drawChar(c, who, st) {
   /* squash-and-stretch about the feet */
   if (P.squash) c.scale(1 / (1 + P.squash), 1 + P.squash);
 
-  /* the upper body rotates about the hips; legs stay planted */
-  const leanOn = () => { c.save(); c.translate(0, hipY); c.rotate(P.lean); c.translate(0, -hipY); };
+  /* The upper body rotates about the hips and carries the shoulder
+     counter-rotation; the pelvis itself tips and shifts over the
+     supporting leg. Legs are hung off the tipped pelvis so the whole
+     figure moves as one linkage instead of as stacked boxes.          */
+  const leanOn = () => {
+    c.save();
+    c.translate(P.hipShift, hipY);
+    c.rotate(P.lean);
+    c.translate(0, -hipY);
+    /* shoulders turn against the pelvis, pivoting at the shoulder line */
+    if (P.shTilt) { c.translate(0, shY); c.rotate(P.shTilt); c.translate(0, -shY); }
+  };
   const leanOff = () => c.restore();
+  /* the pelvis: tips with the stride, carries the legs with it */
+  const hipOn = () => {
+    c.save();
+    c.translate(P.hipShift, hipY);
+    c.rotate(P.hipTilt);
+    c.translate(0, -hipY);
+  };
+  const hipOff = () => c.restore();
 
   /* ================= BACK LAYER ================= */
 
@@ -114,8 +132,10 @@ function drawChar(c, who, st) {
   drawArm(c, L, shY, -shW * 0.78, P.armB, -1, st, who);
   leanOff();
 
-  /* back leg */
+  /* back leg, hung off the tipped pelvis */
+  hipOn();
   drawLeg(c, L, hipY, -hipW * 0.62, P.legB, -1, H);
+  hipOff();
 
   /* ================= TORSO ================= */
   leanOn();
@@ -123,15 +143,10 @@ function drawChar(c, who, st) {
     /* prairie dress : fitted bodice + flared skirt */
     const skirtY = hipY + 1, skirtBot = -H * 0.16;
     const flare = 9.5 + Math.abs(P.legF.k) * 1.2 + P.wind * 2;
-    /* bodice : sloped shoulders nipping in to a narrow waist */
-    c.beginPath();
-    c.moveTo(-shW, shY + 1.4);
-    c.quadraticCurveTo(0, shY - 1.8, shW, shY + 1.4);
-    c.quadraticCurveTo(hipW * 1.18, (shY + hipY) / 2, hipW * 0.95, hipY - 1);
-    c.lineTo(-hipW * 0.95, hipY - 1);
-    c.quadraticCurveTo(-hipW * 1.18, (shY + hipY) / 2, -shW, shY + 1.4);
-    c.closePath();
+    /* bodice : a real ribcage and a nipped waist under the dress */
+    torsoPath(c, shY, hipY - 1, shW, hipW * 0.95, 0.72);
     ink(c, L.dress, 2);
+    torsoShade(c, shY, hipY - 1, shW, hipW * 0.95, L.dressDark);
     /* skirt */
     c.beginPath();
     c.moveTo(-hipW, skirtY - 2);
@@ -168,15 +183,10 @@ function drawChar(c, who, st) {
     /* the black heart pendant - glows as the two of them close the gap */
     if (L.pendant) drawPendant(c, L, headBot + 0.6, t, st.closeness || 0);
   } else {
-    /* black shirt : sloped shoulders, tapered waist */
-    c.beginPath();
-    c.moveTo(-shW, shY + 1.2);
-    c.quadraticCurveTo(0, shY - 2.0, shW, shY + 1.2);
-    c.quadraticCurveTo(hipW * 1.20, (shY + hipY) / 2, hipW, hipY);
-    c.lineTo(-hipW, hipY);
-    c.quadraticCurveTo(-hipW * 1.20, (shY + hipY) / 2, -shW, shY + 1.2);
-    c.closePath();
+    /* black shirt over a real ribcage */
+    torsoPath(c, shY, hipY, shW, hipW, 0.88);
     ink(c, L.shirt, 2);
+    torsoShade(c, shY, hipY, shW, hipW, '#0d0b10');
     /* open canvas trail-coat, hanging past the belt */
     const coatBot = hipY + 5.5;
     [-1, 1].forEach(sgn => {
@@ -209,7 +219,9 @@ function drawChar(c, who, st) {
   leanOff();   /* torso group ends */
 
   /* ================= FRONT LEG ================= */
+  hipOn();
   drawLeg(c, L, hipY, hipW * 0.62, P.legF, 1, H);
+  hipOff();
 
   /* ================= HEAD ================= */
   leanOn();
@@ -217,34 +229,17 @@ function drawChar(c, who, st) {
   c.translate(P.headX, 0);
   c.rotate(P.headTilt);
 
-  /* neck */
-  c.fillStyle = L.skinShade;
-  c.fillRect(-2.1, headBot - 1.5, 4.2, 3.6);
-
-  /* face */
-  c.beginPath();
-  c.moveTo(-headRx, headCY - headRy * 0.25);
-  c.quadraticCurveTo(-headRx, headCY - headRy * 1.05, 0, headCY - headRy);
-  c.quadraticCurveTo(headRx, headCY - headRy * 1.05, headRx, headCY - headRy * 0.25);
-  c.quadraticCurveTo(headRx * 0.98, headCY + headRy * 0.45, headRx * 0.42, headCY + headRy * 0.86);
-  c.quadraticCurveTo(0, headCY + headRy * 1.12, -headRx * 0.42, headCY + headRy * 0.86);
-  c.quadraticCurveTo(-headRx * 0.98, headCY + headRy * 0.45, -headRx, headCY - headRy * 0.25);
-  c.closePath();
-  ink(c, L.skin, 2);
-
-  /* cheek shade */
-  c.save(); c.globalAlpha *= 0.35;
-  ell(c, -headRx * 0.55, headCY + headRy * 0.15, headRx * 0.4, headRy * 0.45);
-  c.fillStyle = L.skinShade; c.fill(); c.restore();
+  drawNeck(c, L, headBot, headCY, headRy);
+  drawSkull(c, L, headCY, headRx, headRy);
 
   drawFace(c, L, headCY, headRx, headRy, st, t);
 
-  /* ---------- HAIR (front) ---------- */
-  drawHair(c, L, headCY, headRx, headRy, t, P);
-
-  /* ---------- HAT ---------- */
-  if (who === 'arshia') drawStetson(c, L, headCY, headRx, headRy, P);
-  else drawBonnet(c, L, headCY, headRx, headRy, P, t);
+  /* ---------- HAIR + HAT (st.hideHair strips them for design work) ---------- */
+  if (!st.hideHair) {
+    drawHair(c, L, headCY, headRx, headRy, t, P);
+    if (who === 'arshia') drawStetson(c, L, headCY, headRx, headRy, P);
+    else drawBonnet(c, L, headCY, headRx, headRy, P, t);
+  }
 
   /* ---------- GLASSES (last, so the frames stay readable) ---------- */
   if (L.glasses) drawGlasses(c, L, headCY, headRx, headRy);
@@ -277,6 +272,10 @@ function drawChar(c, who, st) {
    Those three are what stop the poses reading as a mannequin.        */
 function pose(anim, t, st) {
   const P = { bob: 0, headTilt: 0, headX: 0, wind: 0, lean: 0, squash: 0,
+              /* contrapposto: the pelvis tips one way and the shoulder
+                 girdle answers the other. Without this every pose reads
+                 as a mannequin standing to attention.                  */
+              hipTilt: 0, shTilt: 0, hipShift: 0,
               armF: { a: 0.15, b: 0.1 }, armB: { a: -0.15, b: 0.1 },
               legF: { k: 0, lift: 0 }, legB: { k: 0, lift: 0 } };
   const spd = st.speed === undefined ? 1 : st.speed;
@@ -290,6 +289,11 @@ function pose(anim, t, st) {
       P.bob = -bounce * 2.3;
       P.squash = -0.07 * plant + 0.05 * (1 - bounce); /* compress on contact */
       P.lean = 0.17 + spd * 0.05 + Math.sin(w * 2) * 0.02;
+      /* the stride twists the pelvis; the shoulders swing the other way
+         to cancel it, which is what makes a run read as a run          */
+      P.hipTilt = Math.sin(w) * 0.10;
+      P.shTilt = -Math.sin(w) * 0.13;
+      P.hipShift = Math.sin(w) * 0.7;
       P.headTilt = 0.06 - Math.sin(w * 2 - 0.9) * 0.045;   /* trails the body */
       P.headX = 0.9 + Math.sin(w * 2 - 1.2) * 0.35;
       /* legs : long reach forward, tucked heel behind */
@@ -343,6 +347,7 @@ function pose(anim, t, st) {
       break;
     case 'push': {
       const w = t * 7;
+      P.hipTilt = -0.06; P.shTilt = 0.10;
       P.armF = { a: -1.42, b: 0.06 }; P.armB = { a: -1.28, b: 0.16 };
       P.lean = 0.30; P.headTilt = -0.10; P.headX = 1.2;
       P.legF = { k: -0.65, lift: 0 }; P.legB = { k: 0.55, lift: 0 };
@@ -350,6 +355,8 @@ function pose(anim, t, st) {
       break;
     }
     case 'aim':
+      /* squared up to the target: hips open, shoulders turn into it */
+      P.hipTilt = 0.05; P.shTilt = -0.09; P.hipShift = 0.8;
       P.armF = { a: 1.50, b: 0.06 }; P.armB = { a: -0.34, b: 0.72 };
       P.lean = -0.05; P.headTilt = 0.04;
       P.legF = { k: -0.38, lift: 0 }; P.legB = { k: 0.34, lift: 0 };
@@ -367,6 +374,7 @@ function pose(anim, t, st) {
       break;
     }
     case 'kiss':
+      P.hipTilt = 0.04; P.shTilt = -0.10; P.hipShift = 0.9;
       P.armF = { a: -1.05, b: 0.72 }; P.armB = { a: -0.58, b: 0.62 };
       P.lean = 0.16; P.headTilt = 0.20; P.headX = 1.8; P.bob = -0.5;
       P.legF = { k: 0.18, lift: 0 }; P.legB = { k: -0.14, lift: 0 };
@@ -393,7 +401,12 @@ function pose(anim, t, st) {
       P.bob = Math.sin(w) * 0.55 - 0.25;
       P.squash = Math.sin(w) * 0.012;
       P.lean = shift * 0.030;
-      P.headTilt = Math.sin(w * 0.42 - 0.75) * 0.055;
+      /* weight settles onto one leg: that hip rides up, the shoulder on
+         the same side drops, and the head rights itself against both */
+      P.hipShift = shift * 1.1;
+      P.hipTilt = shift * 0.055;
+      P.shTilt = -shift * 0.075;
+      P.headTilt = Math.sin(w * 0.42 - 0.75) * 0.055 + shift * 0.030;
       P.headX = shift * 0.45;
       P.armF = { a: 0.15 + Math.sin(w - 0.5) * 0.075 + shift * 0.05,
                  b: 0.26 + Math.sin(w - 0.9) * 0.055 };
@@ -405,6 +418,53 @@ function pose(anim, t, st) {
     }
   }
   return P;
+}
+
+/* ---------------- torso ----------------
+   One silhouette both of them share: the shoulder line dips at the neck,
+   the ribcage carries the widest point just under the arm, the waist
+   pinches, and the hips flare back out. A single trapezoid read as a
+   cardboard box; this reads as a body.                                */
+function torsoPath(c, shY, hipY, shW, hipW, waistK) {
+  const h = hipY - shY;
+  const ww = hipW * (waistK === undefined ? 0.80 : waistK);
+  c.beginPath();
+  c.moveTo(-shW, shY + 1.4);
+  c.quadraticCurveTo(-shW * 0.36, shY - 2.6, 0, shY - 2.1);
+  c.quadraticCurveTo(shW * 0.36, shY - 2.6, shW, shY + 1.4);
+  c.bezierCurveTo(shW * 1.08, shY + h * 0.24, ww * 0.98, shY + h * 0.64, hipW, hipY);
+  c.lineTo(-hipW, hipY);
+  c.bezierCurveTo(-ww * 0.98, shY + h * 0.64, -shW * 1.08, shY + h * 0.24, -shW, shY + 1.4);
+  c.closePath();
+}
+
+/* form shading laid inside whatever garment covers the torso */
+function torsoShade(c, shY, hipY, shW, hipW, dark) {
+  const h = hipY - shY;
+  c.save();
+  torsoPath(c, shY, hipY, shW, hipW);
+  c.clip();
+  /* the back half turns away from the light */
+  c.globalAlpha *= 0.26;
+  c.beginPath();
+  c.moveTo(-shW * 1.4, shY - 4);
+  c.quadraticCurveTo(-shW * 0.16, shY + h * 0.4, -shW * 0.34, hipY + 4);
+  c.lineTo(-shW * 1.4, hipY + 4);
+  c.closePath();
+  c.fillStyle = dark; c.fill();
+  /* a soft hollow under the ribs */
+  c.globalAlpha = 0.16;
+  ell(c, shW * 0.10, shY + h * 0.60, shW * 0.62, h * 0.22);
+  c.fillStyle = dark; c.fill();
+  c.restore();
+  /* collarbone */
+  c.save();
+  c.globalAlpha *= 0.30;
+  c.beginPath();
+  c.moveTo(-shW * 0.52, shY + 2.2);
+  c.quadraticCurveTo(0, shY + 3.6, shW * 0.52, shY + 2.2);
+  c.lineWidth = 1; c.strokeStyle = PAL.ink; c.stroke();
+  c.restore();
 }
 
 /* ---------------- limbs ----------------
@@ -521,11 +581,101 @@ function drawProp(c, prop, x, y, ang, L, st) {
   c.restore();
 }
 
+/* ---------------- head ----------------
+   A three-quarter anime skull rather than an oval: round cranium, a brow
+   ridge, a small nose bump on the facing edge, a cheekbone, and a jaw
+   that tapers to a chin set slightly toward the way they are looking.
+   The silhouette is what sells a face at this size, so it is built as
+   one continuous path and inked in a single pass.                     */
+function drawSkull(c, L, cy, rx, ry) {
+  /* the symmetric head: rounded cranium, cheeks, chin tapering to a soft
+     point on the centre line - no jaw pushed to one side */
+  const face = () => {
+    c.beginPath();
+    c.moveTo(-rx, cy - ry * 0.25);
+    c.quadraticCurveTo(-rx, cy - ry * 1.05, 0, cy - ry);
+    c.quadraticCurveTo(rx, cy - ry * 1.05, rx, cy - ry * 0.25);
+    c.quadraticCurveTo(rx * 0.98, cy + ry * 0.45, rx * 0.42, cy + ry * 0.86);
+    c.quadraticCurveTo(0, cy + ry * 1.12, -rx * 0.42, cy + ry * 0.86);
+    c.quadraticCurveTo(-rx * 0.98, cy + ry * 0.45, -rx, cy - ry * 0.25);
+    c.closePath();
+  };
+
+  face();
+  ink(c, L.skin, ry * 0.23);
+
+  c.save();
+  const a0 = c.globalAlpha;
+  face();
+  c.clip();
+
+  /* the side away from the sun falls off */
+  c.globalAlpha *= 0.17;
+  c.beginPath();
+  c.moveTo(-rx * 1.20, cy - ry * 1.30);
+  c.quadraticCurveTo(-rx * 0.34, cy - ry * 0.20, -rx * 0.50, cy + ry * 1.30);
+  c.lineTo(-rx * 1.30, cy + ry * 1.30);
+  c.closePath();
+  c.fillStyle = L.skinShade; c.fill();
+
+  /* a little weight under the jaw and beneath the cheekbone */
+  c.globalAlpha = a0 * 0.13;
+  c.beginPath();
+  c.moveTo(rx * 0.42, cy + ry * 0.86);
+  c.quadraticCurveTo(0, cy + ry * 1.12, -rx * 0.42, cy + ry * 0.86);
+  c.lineTo(-rx * 0.50, cy + ry * 1.40);
+  c.lineTo(rx * 0.50, cy + ry * 1.40);
+  c.closePath();
+  c.fillStyle = L.skinShade; c.fill();
+
+  c.globalAlpha = a0 * 0.10;
+  ell(c, rx * 0.30, cy + ry * 0.48, rx * 0.34, ry * 0.18, -0.24);
+  c.fillStyle = L.skinShade; c.fill();
+
+  /* and a warm rim where the low sun catches the forehead */
+  c.globalAlpha = a0 * 0.24;
+  c.beginPath();
+  c.moveTo(rx * 0.46, cy - ry * 1.10);
+  c.quadraticCurveTo(rx * 1.02, cy - ry * 0.50, rx * 0.94, cy + ry * 0.30);
+  c.lineTo(rx * 1.40, cy + ry * 0.40);
+  c.lineTo(rx * 1.40, cy - ry * 1.30);
+  c.closePath();
+  c.fillStyle = '#fff3dc'; c.fill();
+  c.restore();
+}
+
+/* The neck is a short column that widens into the trapezius, with the
+   jaw's shadow thrown across it. Drawn before the skull so the chin
+   overlaps it.                                                        */
+function drawNeck(c, L, headBot, cy, ry) {
+  const top = headBot - 3.0, bot = headBot + 4.2;
+  c.beginPath();
+  c.moveTo(-2.1, top);
+  c.quadraticCurveTo(-2.5, bot - 1.6, -3.9, bot);
+  c.lineTo(3.7, bot);
+  c.quadraticCurveTo(2.4, bot - 1.6, 2.1, top);
+  c.closePath();
+  ink(c, L.skin, 1.6);
+  c.save();
+  c.globalAlpha *= 0.42;
+  c.beginPath();
+  c.moveTo(-2.2, top);
+  c.quadraticCurveTo(0, top + 2.4, 2.2, top);
+  c.lineTo(2.2, top + 3.0);
+  c.quadraticCurveTo(0, top + 4.1, -2.2, top + 2.8);
+  c.closePath();
+  c.fillStyle = L.skinShade; c.fill();
+  c.restore();
+}
+
 /* ---------------- face ---------------- */
 function drawFace(c, L, cy, rx, ry, st, t) {
   const expr = st.expr || 'normal';
+  /* one unit of line weight, scaled to the head so the face reads the
+     same whether it is 20px tall in play or 300px on the title card */
+  const LW = ry / 8.8;
   const eyeY = cy + ry * 0.16;
-  const ex = rx * 0.44;
+  const ex = rx * 0.40;
   const blinkPhase = ((t * 0.55 + (st.blinkSeed || 0)) % 1);
   let open = 1;
   if (blinkPhase > 0.965) open = 0.08;
@@ -533,7 +683,9 @@ function drawFace(c, L, cy, rx, ry, st, t) {
   if (expr === 'love') open = 0.22;
   if (expr === 'wink') open = 1;
 
-  const eyeW = rx * 0.30, eyeH = ry * (L.eyeShape === 'round' ? 0.40 : 0.34) * open;
+  /* anime eyes are large, but two of these were spanning three quarters
+     of the face and leaving no room for a nose or a chin */
+  const eyeW = rx * 0.225, eyeH = ry * (L.eyeShape === 'round' ? 0.34 : 0.29) * open;
 
   const drawEye = (x, isFront, closedOverride) => {
     const o = closedOverride !== undefined ? closedOverride : open;
@@ -542,19 +694,19 @@ function drawFace(c, L, cy, rx, ry, st, t) {
       c.beginPath();
       c.moveTo(x - eyeW, eyeY + 0.4);
       c.quadraticCurveTo(x, eyeY - (expr === 'love' || expr === 'happy' ? 2.6 : -1.4), x + eyeW, eyeY + 0.4);
-      c.lineWidth = 1.5; c.strokeStyle = L.lash; c.lineCap = 'round'; c.stroke();
+      c.lineWidth = 1.25 * LW; c.strokeStyle = L.lash; c.lineCap = 'round'; c.stroke();
       return;
     }
     /* sclera */
-    ell(c, x, eyeY, eyeW, ry * (L.eyeShape === 'round' ? 0.40 : 0.34) * o);
+    ell(c, x, eyeY, eyeW, ry * (L.eyeShape === 'round' ? 0.34 : 0.29) * o);
     c.fillStyle = PAL.white; c.fill();
     /* iris */
     c.save(); c.clip();
-    ell(c, x + 0.2, eyeY + 0.3, eyeW * 0.78, eyeW * 0.95);
+    ell(c, x + 0.15, eyeY + 0.24, eyeW * 0.70, eyeW * 0.86);
     c.fillStyle = L.eyeIris; c.fill();
-    ell(c, x + 0.2, eyeY + 1.1, eyeW * 0.72, eyeW * 0.6);
+    ell(c, x + 0.15, eyeY + 0.9, eyeW * 0.64, eyeW * 0.54);
     c.fillStyle = L.eyeIrisHi; c.fill();
-    ell(c, x + 0.2, eyeY + 0.4, eyeW * 0.34, eyeW * 0.4);
+    ell(c, x + 0.15, eyeY + 0.34, eyeW * 0.30, eyeW * 0.36);
     c.fillStyle = PAL.ink; c.fill();
     /* anime highlights */
     ell(c, x + eyeW * 0.42, eyeY - eyeW * 0.42, eyeW * 0.30, eyeW * 0.34);
@@ -566,32 +718,32 @@ function drawFace(c, L, cy, rx, ry, st, t) {
     c.beginPath();
     c.moveTo(x - eyeW - 0.5, eyeY - eyeH * 0.55);
     c.quadraticCurveTo(x, eyeY - eyeH * 1.5, x + eyeW + 0.6, eyeY - eyeH * 0.75);
-    c.lineWidth = 2.0; c.strokeStyle = L.lash; c.lineCap = 'round'; c.stroke();
+    c.lineWidth = 1.35 * LW; c.strokeStyle = L.lash; c.lineCap = 'round'; c.stroke();
     /* outer lash flick - a long wing when the look sheet asks for liner */
     const wing = L.wingedLiner ? 1.9 : 1.0;
     c.beginPath();
     c.moveTo(x + eyeW + 0.3, eyeY - eyeH * 0.8);
     c.quadraticCurveTo(x + eyeW + 1.0 * wing, eyeY - eyeH * 1.1,
                        x + eyeW + 1.9 * wing, eyeY - eyeH * (1.5 + 0.35 * wing));
-    c.lineWidth = L.wingedLiner ? 1.6 : 1.3; c.stroke();
+    c.lineWidth = (L.wingedLiner ? 1.25 : 1.0) * LW; c.stroke();
     /* lower lid */
     c.beginPath();
     c.moveTo(x - eyeW * 0.7, eyeY + eyeH * 0.85);
     c.quadraticCurveTo(x, eyeY + eyeH * 1.1, x + eyeW * 0.8, eyeY + eyeH * 0.8);
-    c.lineWidth = 0.9; c.strokeStyle = 'rgba(26,16,20,0.55)'; c.stroke();
+    c.lineWidth = 0.75 * LW; c.strokeStyle = 'rgba(26,16,20,0.55)'; c.stroke();
   };
 
   drawEye(-ex, false, expr === 'wink' ? 0 : undefined);
   drawEye(ex * 1.02, true);
 
   /* brows */
-  const browY = eyeY - ry * 0.42;
+  const browY = eyeY - ry * 0.46;
   let bTilt = 0, bLift = 0;
   if (expr === 'determined') { bTilt = 0.30; bLift = 1.0; }
   if (expr === 'scared') { bTilt = -0.34; bLift = -1.2; }
   if (expr === 'hurt') { bTilt = -0.4; bLift = -1.4; }
   if (expr === 'happy' || expr === 'love') { bTilt = -0.10; bLift = -0.6; }
-  c.strokeStyle = L.brow; c.lineWidth = L.browThick || 1.7; c.lineCap = 'round';
+  c.strokeStyle = L.brow; c.lineWidth = (L.browThick || 1.7) * 0.62 * LW; c.lineCap = 'round';
   [[-ex, -1], [ex * 1.02, 1]].forEach(([x, sgn]) => {
     c.beginPath();
     c.moveTo(x - eyeW * 0.95, browY + bLift + sgn * bTilt * 2.2);
@@ -599,38 +751,51 @@ function drawFace(c, L, cy, rx, ry, st, t) {
     c.stroke();
   });
 
-  /* nose */
+  /* nose: the silhouette already carries the bump, so all this needs
+     to do is drop a small shadow under it and catch a highlight */
+  c.save();
+  c.globalAlpha *= 0.55;
   c.beginPath();
-  c.moveTo(rx * 0.10, cy + ry * 0.42);
-  c.lineTo(rx * 0.26, cy + ry * 0.52);
-  c.lineWidth = 1.1; c.strokeStyle = 'rgba(26,16,20,0.45)'; c.stroke();
+  c.moveTo(rx * 0.34, cy + ry * 0.34);
+  c.quadraticCurveTo(rx * 0.52, cy + ry * 0.46, rx * 0.34, cy + ry * 0.50);
+  c.closePath();
+  c.fillStyle = L.skinShade; c.fill();
+  c.globalAlpha *= 0.7;
+  c.beginPath();
+  c.moveTo(rx * 0.44, cy + ry * 0.30);
+  c.lineTo(rx * 0.50, cy + ry * 0.44);
+  c.lineWidth = 0.7 * LW; c.strokeStyle = 'rgba(26,16,20,0.5)'; c.lineCap = 'round'; c.stroke();
+  c.restore();
 
   /* mouth */
   const my = cy + ry * 0.70;
-  c.strokeStyle = L.lips || L.lash; c.lineWidth = L.lips ? 1.6 : 1.3; c.lineCap = 'round';
+  c.strokeStyle = L.lips || L.lash; c.lineWidth = (L.lips ? 0.85 : 0.72) * LW; c.lineCap = 'round';
   c.beginPath();
   if (expr === 'happy' || expr === 'cheer') {
-    c.moveTo(-1.9, my - 0.6); c.quadraticCurveTo(0.2, my + 2.2, 2.2, my - 0.7);
-    c.stroke();
+    c.moveTo(rx * 0.02, my - 0.4);
+    c.quadraticCurveTo(rx * 0.24, my + 1.5, rx * 0.46, my - 0.5);
+    c.quadraticCurveTo(rx * 0.24, my + 0.5, rx * 0.02, my - 0.4);
+    c.closePath();
     c.fillStyle = L.lips || '#8e2338'; c.fill();
+    c.lineWidth = 0.6 * LW; c.stroke();
   } else if (expr === 'love') {
-    c.moveTo(-1.4, my); c.quadraticCurveTo(0.3, my + 1.6, 1.9, my - 0.2); c.stroke();
+    c.moveTo(rx * 0.06, my - 0.1); c.quadraticCurveTo(rx * 0.26, my + 1.1, rx * 0.44, my - 0.3); c.stroke();
   } else if (expr === 'scared' || expr === 'hurt') {
-    ell(c, 0.3, my + 0.3, 1.5, 1.9); ink(c, '#7a2438', 1.1);
+    ell(c, rx * 0.26, my + 0.2, ry * 0.13, ry * 0.18); ink(c, '#7a2438', 0.8 * LW);
   } else if (expr === 'determined') {
-    c.moveTo(-1.6, my + 0.3); c.lineTo(2.0, my - 0.2); c.stroke();
+    c.moveTo(rx * 0.06, my + 0.2); c.lineTo(rx * 0.46, my - 0.2); c.stroke();
   } else if (expr === 'ko') {
-    c.moveTo(-1.6, my); c.quadraticCurveTo(0.2, my - 1.6, 2.0, my); c.stroke();
+    c.moveTo(rx * 0.06, my); c.quadraticCurveTo(rx * 0.26, my - 1.3, rx * 0.46, my); c.stroke();
   } else {
-    c.moveTo(-1.2, my); c.quadraticCurveTo(0.4, my + 0.9, 1.8, my - 0.1); c.stroke();
+    c.moveTo(rx * 0.10, my); c.quadraticCurveTo(rx * 0.28, my + 0.8, rx * 0.44, my - 0.1); c.stroke();
   }
 
   /* blush */
   if (expr === 'love' || expr === 'happy' || st.blush) {
     c.save(); c.globalAlpha *= 0.9;
-    ell(c, -ex - 1.4, eyeY + ry * 0.42, rx * 0.26, ry * 0.16);
+    ell(c, -ex - 0.8, eyeY + ry * 0.40, rx * 0.24, ry * 0.14);
     c.fillStyle = L.blush; c.fill();
-    ell(c, ex + 2.0, eyeY + ry * 0.42, rx * 0.26, ry * 0.16);
+    ell(c, ex + 1.4, eyeY + ry * 0.40, rx * 0.24, ry * 0.14);
     c.fillStyle = L.blush; c.fill();
     c.restore();
   }

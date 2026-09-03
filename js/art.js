@@ -854,51 +854,34 @@ function drawHair(c, L, cy, rx, ry, t, P) {
   const w = Math.sin(t * 3.4) * (0.6 + P.wind * 1.2);
   const cs = L.curlSize || 3;
 
-  /* ---------- ARSHIA ----------
-     The reference is a big head of dark curls with real height on top,
-     curls piling out past the skull at the sides, and length down to
-     the nape. Hugging the skull made it read as a swim cap, so the
-     crown now sits well proud of the head and the sides carry weight. */
+  /* ---------- ARSHIA : short curls, cropped close to the skull ---------- */
   if (L.hairStyle === 'curlyShort') {
     const lobes = [];
-    /* outer crown: stands off the skull, that is where the volume is */
-    for (let i = 0; i <= 15; i++) {
-      const a = Math.PI * (1.10 - i / 15 * 1.20);
-      lobes.push([Math.cos(a) * rx * 1.14,
-                  cy - Math.sin(a) * ry * 1.34 - ry * 0.10,
-                  cs * (1.02 + 0.22 * Math.sin(i * 1.9)), 0]);
+    /* crown row - follows the skull instead of ballooning off it */
+    for (let i = 0; i <= 13; i++) {
+      const a = Math.PI * (1.06 - i / 13 * 1.12);
+      lobes.push([Math.cos(a) * rx * 0.86,
+                  cy - Math.sin(a) * ry * 0.86 - ry * 0.20,
+                  cs * (0.80 + 0.12 * Math.sin(i * 1.9)), 0]);
     }
-    /* a second bank just inside it so the mass has depth, not an outline */
-    for (let i = 0; i <= 11; i++) {
-      const a = Math.PI * (1.02 - i / 11 * 1.04);
-      lobes.push([Math.cos(a) * rx * 0.86 + w * 0.2,
-                  cy - Math.sin(a) * ry * 0.98 - ry * 0.24,
-                  cs * 0.94, 0]);
+    /* a shallow inner row for depth */
+    for (let i = 0; i <= 8; i++) {
+      const a = Math.PI * (0.94 - i / 8 * 0.88);
+      lobes.push([Math.cos(a) * rx * 0.62 + w * 0.2,
+                  cy - Math.sin(a) * ry * 0.54 - ry * 0.38,
+                  cs * 0.70, 0]);
     }
-    /* and a low bank filling the middle so no gaps show through */
-    for (let i = 0; i <= 6; i++) {
-      const a = Math.PI * (0.92 - i / 6 * 0.84);
-      lobes.push([Math.cos(a) * rx * 0.52,
-                  cy - Math.sin(a) * ry * 0.52 - ry * 0.36,
-                  cs * 0.84, 0]);
-    }
-    /* curls breaking over the forehead, sitting above the brows */
-    lobes.push([-rx * 0.70, cy - ry * 0.48, cs * 0.80, 0]);
-    lobes.push([-rx * 0.30, cy - ry * 0.62, cs * 0.84, 0]);
-    lobes.push([rx * 0.14, cy - ry * 0.64, cs * 0.82, 0]);
-    lobes.push([rx * 0.56, cy - ry * 0.52, cs * 0.78, 0]);
-    lobes.push([rx * 0.86, cy - ry * 0.28, cs * 0.70, 0]);
-    /* the sides, piled out past the ear */
-    lobes.push([-rx * 1.14, cy - ry * 0.20, cs * 0.88, 0]);
-    lobes.push([-rx * 1.20, cy + ry * 0.20, cs * 0.84, 0]);
-    lobes.push([rx * 1.14, cy - ry * 0.18, cs * 0.84, 0]);
-    lobes.push([rx * 1.18, cy + ry * 0.22, cs * 0.78, 0]);
-    /* and the length down to the nape */
-    lobes.push([-rx * 1.16 + w * 0.3, cy + ry * 0.62, cs * 0.80, 0]);
-    lobes.push([-rx * 1.06 + w * 0.5, cy + ry * 1.00, cs * 0.72, 0]);
-    lobes.push([-rx * 0.86 + w * 0.6, cy + ry * 1.32, cs * 0.62, 0]);
-    lobes.push([rx * 1.12 + w * 0.3, cy + ry * 0.60, cs * 0.74, 0]);
-    lobes.push([rx * 1.00 + w * 0.5, cy + ry * 0.94, cs * 0.64, 0]);
+    /* bangs breaking over the forehead, above the brows */
+    lobes.push([-rx * 0.62, cy - ry * 0.56, cs * 0.60, 0]);
+    lobes.push([-rx * 0.22, cy - ry * 0.66, cs * 0.62, 0]);
+    lobes.push([rx * 0.18, cy - ry * 0.66, cs * 0.60, 0]);
+    lobes.push([rx * 0.58, cy - ry * 0.56, cs * 0.58, 0]);
+    /* sideburn + nape curls down to the collar */
+    lobes.push([-rx * 0.90, cy + ry * 0.06, cs * 0.58, 0]);
+    lobes.push([-rx * 0.92 + w * 0.2, cy + ry * 0.42, cs * 0.50, 0]);
+    lobes.push([-rx * 0.84 + w * 0.3, cy + ry * 0.70, cs * 0.42, 0]);
+    lobes.push([rx * 0.92, cy + ry * 0.08, cs * 0.56, 0]);
+    lobes.push([rx * 0.94 + w * 0.2, cy + ry * 0.44, cs * 0.46, 0]);
     curlMass(c, lobes, L);
     return;
   }

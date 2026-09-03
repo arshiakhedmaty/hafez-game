@@ -6,7 +6,9 @@
 /* ------------------------------------------------------------------ */
 const Save = (() => {
   const blank = () => ({
-    unlocked: 1,
+    /* every chapter open from the start: this is a game two people play
+       on one couch, and being told to come back later is not the point */
+    unlocked: STAGES.length,
     best: {},              /* stageId -> {time, coins, deaths} */
     difficulty: 'gunslinger',
     music: 0.55, sfx: 0.75, master: 0.8,
@@ -17,6 +19,7 @@ const Save = (() => {
     try {
       const raw = localStorage.getItem(CFG.SAVE_KEY);
       if (raw) d = Object.assign(blank(), JSON.parse(raw));
+      d.unlocked = STAGES.length;   /* honour the open-chapters rule for old saves too */
     } catch (e) { d = blank(); }
     Snd.S.music = d.music; Snd.S.sfx = d.sfx; Snd.S.master = d.master;
     return d;
@@ -288,8 +291,8 @@ Screens.chapters = {
     if (Input.menuDown()) { this.sel = (this.sel + 1) % n; Snd.play('move'); }
     if (Input.menuBack()) { Snd.play('back'); return 'main'; }
     if (Input.menuOk()) {
-      if (this.sel < Save.data.unlocked) { Snd.play('click'); return 'startAt:' + this.sel; }
-      Snd.play('wrong');
+      Snd.play('click');
+      return 'startAt:' + this.sel;
     }
     return null;
   },

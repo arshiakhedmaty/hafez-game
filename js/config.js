@@ -75,7 +75,7 @@ const LOOK = {
     hairHi: '#4e3730',
     hairTip: null,            // no ombre
     hairStyle: 'curlyShort',
-    curlSize: 2.15,            // radius of each curl lobe
+    curlSize: 2.35,            // radius of each curl lobe
     curlCount: 18,
     brow: '#1c1210',
     browThick: 2.4,           // thick, straight brows

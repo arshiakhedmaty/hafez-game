@@ -1,0 +1,12 @@
+# generated bundles - rebuild with `node tools/build-vercel.js`
+dist/
+.deploy-payload.json
+
+# tooling
+node_modules/
+.vercel/
+
+# os noise
+.DS_Store
+Thumbs.db
+desktop.ini

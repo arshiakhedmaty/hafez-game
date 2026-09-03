@@ -1,0 +1,81 @@
+/* HAFEZ GAME — page chrome. The game itself is all canvas. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #140b1c;
+  color: #efdcb0;
+  font-family: "Special Elite", "Courier New", monospace;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* a warm vignette so the canvas sits in something, not on a black void */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(122, 60, 40, 0.30), transparent 62%),
+    radial-gradient(ellipse at 50% 100%, rgba(226, 176, 67, 0.10), transparent 55%);
+  pointer-events: none;
+}
+
+#frame {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game {
+  display: block;
+  background: #241543;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 3px #4a2a17,
+    0 0 0 5px #7a4a2b,
+    0 26px 70px rgba(0, 0, 0, 0.72);
+  image-rendering: auto;
+  touch-action: none;
+}
+
+/* ---- boot card, removed as soon as the loop starts ---- */
+#boot {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #140b1c;
+  z-index: 10;
+}
+.bootTitle {
+  font-family: "Rye", Georgia, serif;
+  font-size: clamp(30px, 6vw, 62px);
+  letter-spacing: 4px;
+  color: #ffd66b;
+  text-shadow: 0 4px 0 #160d1c;
+}
+.bootSub {
+  font-size: clamp(12px, 2vw, 18px);
+  letter-spacing: 8px;
+  color: #efdcb0;
+  opacity: 0.85;
+}
+.bootHint {
+  margin-top: 14px;
+  font-size: 13px;
+  opacity: 0.55;
+  letter-spacing: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

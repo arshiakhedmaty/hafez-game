@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HAFEZ GAME — Character Design Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#1b1026;color:#efdcb0;
+            font-family:"Special Elite","Courier New",monospace;}
+  header{padding:18px 24px 6px;text-align:center}
+  h1{font-family:"Rye",Georgia,serif;font-size:30px;margin:0;letter-spacing:2px;
+     color:#ffd66b;text-shadow:0 3px 0 #160d1c}
+  p.sub{margin:6px 0 0;opacity:.75;font-size:14px}
+  #wrap{display:flex;justify-content:center;padding:10px}
+  canvas{background:#241543;border:3px solid #7a4a2b;border-radius:6px;
+         box-shadow:0 12px 40px rgba(0,0,0,.6);image-rendering:auto;max-width:98vw;height:auto}
+  .keys{text-align:center;font-size:13px;opacity:.7;padding:8px}
+  b{color:#e2b043}
+</style>
+</head>
+<body>
+<header>
+  <h1>HAFEZ GAME</h1>
+  <p class="sub">character design preview &mdash; ARSHIA &amp; ROJINA</p>
+</header>
+<div id="wrap"><canvas id="cv" width="1100" height="620"></canvas></div>
+<div class="keys">press <b>SPACE</b> to cycle expressions &nbsp;·&nbsp; <b>1&ndash;6</b> to change the pose</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/art.js"></script>
+<script>
+const cv = document.getElementById('cv'), c = cv.getContext('2d');
+const EXPR  = ['normal','happy','love','determined','scared','wink'];
+const ANIMS = ['idle','run','jump','fall','cheer','aim'];
+let ei = 0, ai = 0, T = 0;
+
+addEventListener('keydown', e => {
+  if (e.code === 'Space') { ei = (ei + 1) % EXPR.length; e.preventDefault(); }
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 6) ai = n - 1;
+});
+
+function sky() {
+  const g = c.createLinearGradient(0, 0, 0, cv.height);
+  g.addColorStop(0.00, PAL.skyTop);
+  g.addColorStop(0.30, PAL.skyHigh);
+  g.addColorStop(0.55, PAL.skyMid);
+  g.addColorStop(0.80, PAL.skyLow);
+  g.addColorStop(1.00, PAL.skyHaze);
+  c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
+  /* sun */
+  const sy = cv.height * 0.62;
+  c.save(); c.globalAlpha = .35;
+  for (let i = 6; i > 0; i--) { ell(c, cv.width / 2, sy, 120 + i * 26, 120 + i * 26); c.fillStyle = PAL.sun; c.globalAlpha = .05; c.fill(); }
+  c.restore();
+  ell(c, cv.width / 2, sy, 118, 118); c.fillStyle = PAL.sun; c.fill();
+  ell(c, cv.width / 2, sy, 96, 96); c.fillStyle = PAL.sunCore; c.fill();
+  /* ground */
+  c.fillStyle = PAL.ground; c.fillRect(0, cv.height - 92, cv.width, 92);
+  c.fillStyle = PAL.groundTop; c.fillRect(0, cv.height - 92, cv.width, 5);
+}
+
+function panel(x, y, w, h) {
+  rr(c, x, y, w, h, 8);
+  c.fillStyle = 'rgba(22,13,28,0.45)'; c.fill();
+  c.lineWidth = 2; c.strokeStyle = 'rgba(239,220,176,0.28)'; c.stroke();
+}
+
+function frame(dt) {
+  T += dt;
+  sky();
+
+  const groundY = cv.height - 92;
+  const expr = EXPR[ei], anim = ANIMS[ai];
+
+  /* ---- full body, large ---- */
+  const S = 5.4;
+  const pairX = cv.width * 0.36;
+
+  /* closeness drives her pendant glow — show it fully lit here */
+  drawChar(c, 'arshia', { x: pairX - 82, y: groundY, face: 1, anim, t: T, expr,
+                          scale: S, speed: 1, blinkSeed: 0 });
+  drawChar(c, 'rojina', { x: pairX + 82, y: groundY, face: -1, anim, t: T + 0.7, expr,
+                          scale: S, speed: 1, blinkSeed: 0.45, closeness: 0.75 });
+
+  /* name plaques under each of them */
+  [['ARSHIA', pairX - 82, LOOK.arshia.accent], ['ROJINA', pairX + 82, LOOK.rojina.accent]]
+    .forEach(([n, x, col]) => {
+      c.save();
+      const w = 132, h = 30;
+      rr(c, x - w / 2, groundY + 14, w, h, 5);
+      c.fillStyle = 'rgba(22,13,28,0.7)'; c.fill();
+      c.lineWidth = 2; c.strokeStyle = col; c.stroke();
+      txt(c, n, x, groundY + 30, { size: 17, font: FONT.title, fill: col, letter: 2 });
+      c.restore();
+    });
+
+  /* ---- portrait busts, right column ---- */
+  const px = cv.width * 0.80;
+  panel(px - 150, 60, 300, 440);
+  txt(c, 'PORTRAITS', px, 88, { size: 15, font: FONT.title, fill: PAL.parch, letter: 3 });
+
+  drawPortrait(c, 'arshia', px, 190, 74, expr, T);
+  txt(c, LOOK.arshia.nameFa + '  /  ARSHIA', px, 268,
+      { size: 15, font: FONT.body, fill: LOOK.arshia.accent });
+
+  drawPortrait(c, 'rojina', px, 380, 74, expr, T + 0.7);
+  txt(c, LOOK.rojina.nameFa + '  /  ROJINA', px, 470,
+      { size: 15, font: FONT.body, fill: LOOK.rojina.accent });
+
+  /* ---- read-out ---- */
+  panel(24, 60, 250, 132);
+  txt(c, 'EXPRESSION', 149, 86, { size: 13, font: FONT.title, fill: PAL.parchDk, letter: 2 });
+  txt(c, expr.toUpperCase(), 149, 112, { size: 22, font: FONT.title, fill: PAL.gold });
+  txt(c, 'POSE', 149, 144, { size: 13, font: FONT.title, fill: PAL.parchDk, letter: 2 });
+  txt(c, anim.toUpperCase(), 149, 170, { size: 22, font: FONT.title, fill: PAL.gold });
+}
+
+let last = performance.now();
+(function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  frame(dt);
+  requestAnimationFrame(loop);
+})(performance.now());
+</script>
+</body>
+</html>

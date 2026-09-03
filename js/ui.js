@@ -376,6 +376,9 @@ Screens.howto = {
 
     if (this.page === 0) this.controls(c); else this.rules(c);
 
+    if (this.page === 0)
+      txt(c, 'ONE LAPTOP  ·  ONE KEYBOARD  ·  BOTH OF YOU AT THE SAME TIME',
+          CFG.W / 2, CFG.H - 78, { size: 13, font: FONT.ui, fill: PAL.gold, letter: 2 });
     txt(c, this.page === 0 ? 'CONTROLS  ( 1 / 2 )' : 'THE RULES  ( 2 / 2 )',
         CFG.W / 2, CFG.H - 52, { size: 14, font: FONT.ui, fill: PAL.gold, letter: 2 });
     Chrome.footer(c, 'LEFT / RIGHT to turn the page  ·  ESC to go back');
@@ -419,18 +422,20 @@ Screens.howto = {
        'Reach them and HOLD your kiss key. They come back with one less heart, forever.'],
       ['IF YOU BOTH GO DOWN',
        'Back to the last checkpoint, hearts restored. The clock does not stop.'],
-      ['SILVER DOLLARS ARE OPTIONAL',
-       'Nothing forces you to take them. Nothing but pride.']
+      ['SILVER DOLLARS BUY THE CHAPTER NOBODY SEES',
+       'Every dollar in every chapter opens an eighth one. Nothing else does.'],
+      ['THERE IS A CLOCK IF YOU WANT ONE',
+       'SPEEDRUN runs all seven back to back. LEVEL EDITOR builds your own.']
     ];
     rules.forEach(([h, b], i) => {
-      const y = 122 + i * 74;
+      const y = 112 + i * 64;
       c.save();
-      rr(c, 96, y - 26, CFG.W - 192, 62, 5);
+      rr(c, 96, y - 24, CFG.W - 192, 54, 5);
       c.fillStyle = 'rgba(22,13,28,0.5)'; c.fill();
       c.lineWidth = 1.5; c.strokeStyle = 'rgba(226,176,67,0.35)'; c.stroke();
       drawHeart(c, 122, y, 7, i % 2 ? LOOK.rojina.accent : LOOK.arshia.accent);
-      txt(c, h, 146, y - 9, { size: 16, font: FONT.title, fill: PAL.gold, align: 'left', letter: 1 });
-      txt(c, b, 146, y + 14, { size: 13, font: FONT.ui, fill: PAL.parch, align: 'left' });
+      txt(c, h, 146, y - 8, { size: 15, font: FONT.title, fill: PAL.gold, align: 'left', letter: 1 });
+      txt(c, b, 146, y + 13, { size: 12.5, font: FONT.ui, fill: PAL.parch, align: 'left' });
       c.restore();
     });
   }

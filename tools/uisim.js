@@ -68,6 +68,7 @@ function fakeEl(id) {
 
 /* ---------------- the window this thing thinks it is in -------------- */
 const listeners = {};
+const fsCalls = [];
 let rafCb = null;
 let now = 0;
 const store = {};
@@ -96,10 +97,13 @@ const env = {
   document: {
     getElementById: id => fakeEl(id),
     createElement: tag => fakeEl(tag),
-    documentElement: { requestFullscreen() {} },
+    documentElement: {
+      requestFullscreen() { env.document.fullscreenElement = env.document.documentElement; fsCalls.push('enter'); }
+    },
     addEventListener(t, f) { env.addEventListener(t, f); },
     fullscreenElement: null,
-    exitFullscreen() {}, hidden: false
+    exitFullscreen() { env.document.fullscreenElement = null; fsCalls.push('exit'); },
+    hidden: false
   },
   fire(type, ev) { (listeners[type] || []).slice().forEach(fn => fn(ev)); }
 };
@@ -143,8 +147,20 @@ function ok(name, cond, detail) {
   else { fail++; console.log('  FAIL ' + name + (detail ? '   ' + detail : '')); }
 }
 
-/* step the real game loop by hand */
+/* Input and friends register their listeners when the source is first
+   evaluated; Game.boot() adds more on top. Booting twice in one process
+   therefore stacks the second set, and a single key press lands twice -
+   which made the F11 tests pass or fail on whether the stack happened to
+   be an odd or an even number deep. Snapshot the load-time listeners
+   once, and put the world back to exactly that before every boot, so
+   each one behaves like a fresh page load. */
+const baseline = {};
+for (const k in listeners) baseline[k] = listeners[k].slice();
+
 function boot(search) {
+  for (const k in listeners) delete listeners[k];
+  for (const k in baseline) listeners[k] = baseline[k].slice();
+  env.document.fullscreenElement = null;
   env.location.search = search || '';
   now = 0;
   Game.boot();
@@ -315,6 +331,11 @@ boot('');
 frames(4);
 ok('a device with no real pointer is told so plainly',
    Game.debug().screen === 'desktop', Game.debug().screen);
+/* F11 means fullscreen everywhere else, so it must not double as the
+   way past this card */
+env.fire('keydown', { key: 'F11', code: 'F11', preventDefault() {} });
+frames(2);
+ok('F11 here means fullscreen, not let me in', Game.debug().screen === 'desktop');
 env.fire('pointerdown', {});
 frames(2);
 ok('but a tap still lets you look around', Game.debug().screen === 'title');
@@ -393,6 +414,54 @@ ok('T plays what you just built',
    JSON.stringify(Game.debug()));
 ok('the level under test is the one on the sheet',
    Play.state.def.name === ed.L.title);
+
+group('F11 goes fullscreen from wherever you are');
+boot('');
+frames(40);
+fsCalls.length = 0;
+
+/* the title, a menu, a stage, the pause screen and the editor - the whole
+   point of the request was that it works in all of them, and it used to
+   work in none, because boot swallowed the key and replaced it with
+   nothing at all */
+const where = [
+  ['the title', () => { Game.goto('title'); }],
+  ['a menu', () => { Game.goto('main'); }],
+  ['the chapter list', () => { Game.goto('chapters'); }],
+  ['the editor', () => { Game.goto('editor'); }],
+  ['inside a stage', () => { Game.startStage(0); }],
+  ['a minigame', () => { Game.startStage(1); }]
+];
+where.forEach(([name, put]) => {
+  put(); frames(2);
+  const before = fsCalls.length;
+  key('F11');
+  const on = fsCalls.length === before + 1 && env.document.fullscreenElement !== null;
+  key('F11');
+  const off = fsCalls.length === before + 2 && env.document.fullscreenElement === null;
+  ok('F11 toggles from ' + name, on && off,
+     fsCalls.length === before ? 'the key did nothing at all'
+                               : fsCalls.slice(before).join(','));
+});
+
+/* the pause screen sits over a stage, which is its own code path */
+Game.startStage(0); frames(2);
+key('Escape'); frames(2);
+ok('the game is paused', Game.debug().paused === true);
+const n0 = fsCalls.length;
+key('F11');
+ok('F11 works from the pause screen too',
+   fsCalls.length > n0 && env.document.fullscreenElement !== null);
+key('F11'); key('Escape'); frames(2);
+
+/* The bug this replaced was a listener that called preventDefault and
+   then stopped, so the key was taken away from the browser and given to
+   nobody. Both halves have to be there, and above the screens. */
+const bootSrc = read('js/game.js');
+ok('the handler lives above every screen rather than inside a menu',
+   /F11[\s\S]{0,200}toggleFullscreen\(\)/.test(bootSrc));
+ok('and it stops the browser doing its own thing on top',
+   /F11[\s\S]{0,160}preventDefault/.test(bootSrc));
 
 group('every screen survives being drawn');
 boot('');

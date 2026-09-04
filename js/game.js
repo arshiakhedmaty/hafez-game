@@ -224,7 +224,18 @@ const Game = (() => {
     const wake = () => { Snd.resume(); Snd.vol(); };
     addEventListener('keydown', wake, { once: true });
     addEventListener('pointerdown', wake, { once: true });
-    addEventListener('keydown', e => { if (e.key === 'F11') e.preventDefault(); });
+    /* F11 used to be swallowed here: the browser's own fullscreen was
+       suppressed and nothing replaced it, so the key did nothing at all
+       anywhere in the game. It now toggles the game's fullscreen, and it
+       does it from the title, the menus, the editor, a stage or the pause
+       screen alike, because this listener sits above all of them.
+       Capture, so it runs before anything else can eat the press.     */
+    addEventListener('keydown', e => {
+      if (e.key === 'F11' || e.code === 'F11') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    }, { capture: true });
     document.getElementById('boot').remove();
 
     /* ?stage=3 drops straight into a chapter, ?screen=options into a menu.
@@ -238,9 +249,16 @@ const Game = (() => {
     const fine = !window.matchMedia || window.matchMedia('(pointer: fine)').matches;
     if (!fine) {
       goto('desktop');
-      const letIn = () => { if (screen === 'desktop') goto('title'); };
-      addEventListener('pointerdown', letIn, { once: true });
-      addEventListener('keydown', letIn, { once: true });
+      /* any tap or key gets you in to look around - except F11, which
+         means fullscreen everywhere else and should mean it here too */
+      const letIn = e => {
+        if (e && (e.key === 'F11' || e.code === 'F11')) return;
+        if (screen === 'desktop') goto('title');
+        removeEventListener('pointerdown', letIn);
+        removeEventListener('keydown', letIn);
+      };
+      addEventListener('pointerdown', letIn);
+      addEventListener('keydown', letIn);
       last = performance.now();
       requestAnimationFrame(frame);
       return;

@@ -138,6 +138,9 @@ const Chrome = {
     c.fillStyle = 'rgba(22,13,28,0.55)';
     c.fillRect(0, CFG.H - 30, CFG.W, 30);
     txt(c, s, CFG.W / 2, CFG.H - 15, { size: 13, font: FONT.ui, fill: PAL.parchDk, letter: 1 });
+    /* off to one side, so it never crowds whatever the screen is saying */
+    txt(c, 'F11  FULLSCREEN', CFG.W - 16, CFG.H - 15,
+        { size: 11, font: FONT.ui, fill: 'rgba(239,220,176,0.34)', align: 'right', letter: 1 });
     c.restore();
   },
 
@@ -503,7 +506,8 @@ Screens.options = {
       } else if (i === 4) {
         txt(c, d.shake ? 'ON' : 'OFF', vx, y, { size: 17, font: FONT.title, fill: d.shake ? PAL.teal : PAL.parchDk, align: 'left' });
       } else if (i === 5) {
-        txt(c, 'PRESS ENTER', vx, y, { size: 15, font: FONT.ui, fill: on ? PAL.gold : PAL.parchDk, align: 'left' });
+        txt(c, 'ENTER  ·  or F11 anywhere', vx, y,
+            { size: 15, font: FONT.ui, fill: on ? PAL.gold : PAL.parchDk, align: 'left' });
       } else {
         txt(c, this.confirmErase > 0 ? 'PRESS AGAIN TO ERASE' : 'PRESS ENTER',
             vx, y, { size: 15, font: FONT.ui, fill: this.confirmErase > 0 ? PAL.red : (on ? PAL.gold : PAL.parchDk), align: 'left' });
@@ -715,10 +719,23 @@ Screens.ending = {
 };
 
 /* ------------------------------------------------------------------ */
+/* The whole page goes fullscreen rather than the canvas alone, so the
+   frame and its border come too and the canvas stays centred. A browser
+   may refuse the request outright - it only grants one off a real key or
+   click - and a refusal arrives as a rejected promise, which must not be
+   allowed to surface as an error in the console. */
 function toggleFullscreen() {
   const el = document.documentElement;
-  if (!document.fullscreenElement) { if (el.requestFullscreen) el.requestFullscreen(); }
-  else if (document.exitFullscreen) document.exitFullscreen();
+  const on = document.fullscreenElement || document.webkitFullscreenElement;
+  try {
+    if (!on) {
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) { const p = req.call(el); if (p && p.catch) p.catch(() => {}); }
+    } else {
+      const off = document.exitFullscreen || document.webkitExitFullscreen;
+      if (off) { const p = off.call(document); if (p && p.catch) p.catch(() => {}); }
+    }
+  } catch (e) { /* nothing here is worth interrupting a game for */ }
 }
 
 /* =====================================================================

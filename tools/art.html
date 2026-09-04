@@ -28,6 +28,8 @@
 <div id="out">
   <canvas id="og" width="1200" height="630"></canvas>
   <canvas id="poster" width="1080" height="1350"></canvas>
+  <canvas id="cover" width="630" height="500"></canvas>
+  <canvas id="shot" width="960" height="540"></canvas>
 </div>
 <div id="log">rendering&hellip;</div>
 
@@ -39,6 +41,9 @@
 <script src="../js/particles.js"></script>
 <script src="../js/scenery.js"></script>
 <script src="../js/levels.js"></script>
+<script src="../js/platformer.js"></script>
+<script src="../js/minigames.js"></script>
+<script src="../js/ride.js"></script>
 <script src="../js/ui.js"></script>
 <script>
 const LINK = 'arshiakhedmaty.github.io/hafez-game';
@@ -149,15 +154,74 @@ function drawPoster(c) {
   c.restore();
 }
 
+/* ---- itch.io's cover: 630x500, and it has to still read at 315x250,
+        which is why the title is enormous and there are three colours
+        in it rather than thirty ---- */
+function drawCover(c) {
+  const W = 630, H = 500;
+  /* cover the WHOLE card: scaling to the width leaves a bare strip at the
+     top, so scale to the height and let the sides fall off instead */
+  c.save();
+  const k = H / CFG.H;
+  c.translate(-(CFG.W * k - W) / 2, 0);
+  c.scale(k, k);
+  Sky.draw(c, 'gulch', 260, 0, CFG.W, CFG.H, 2.1);
+  c.restore();
+
+  const gy = H - 92;
+  c.fillStyle = PAL.ground; c.fillRect(0, gy, W, 120);
+  c.fillStyle = PAL.groundTop; c.fillRect(0, gy, W, 4);
+  Sky.cactus(c, 58, gy, 1.0, '#3a1c3c');
+  Sky.cactus(c, 574, gy, 0.85, '#3a1c3c');
+  Sky.pole(c, 148, gy, 0.9, '#33183a');
+
+  drawChar(c, 'arshia', { x: W / 2 - 86, y: gy, face: 1, anim: 'idle',
+                          t: 1.2, expr: 'normal', scale: 3.1 });
+  drawChar(c, 'rojina', { x: W / 2 + 86, y: gy, face: -1, anim: 'idle',
+                          t: 2.0, expr: 'love', scale: 3.1,
+                          blinkSeed: 0.45, closeness: 1 });
+
+  c.save();
+  c.fillStyle = 'rgba(22,13,28,0.42)'; c.fillRect(0, 0, W, 168);
+  txt(c, CFG.TITLE, W / 2, 82,
+      { size: 62, font: FONT.title, fill: PAL.gold, stroke: PAL.ink, lw: 9, letter: 3, shadow: 4 });
+  txt(c, CFG.SUBTITLE, W / 2, 126,
+      { size: 22, font: FONT.title, fill: PAL.parch, stroke: PAL.ink, lw: 5, letter: 6 });
+  c.fillStyle = 'rgba(22,13,28,0.7)'; c.fillRect(0, H - 44, W, 44);
+  txt(c, 'TWO PLAYERS  ·  ONE KEYBOARD', W / 2, H - 20,
+      { size: 19, font: FONT.ui, fill: PAL.gold, letter: 3 });
+  c.restore();
+}
+
+/* real frames out of the real engine - a page full of mocked-up
+   screenshots is a page that lies about the game */
+function shotOf(c, stageId, frames, tweak) {
+  const st = STAGES.find(s => s.id === stageId);
+  const M = st.kind === 'platform' ? Play : Mini;
+  M.start(st, { difficulty: 'gunslinger' });
+  if (M.state.state === 'intro') { M.state.state = 'play'; M.state.stateT = 0; }
+  if (M.state.phase === 'intro') { M.state.phase = 'play'; M.state.phaseT = 0; }
+  for (let i = 0; i < frames; i++) M.update(0.016);
+  if (tweak) tweak(M.state);
+  M.draw(c);
+}
+
 /* ---------------------------------------------------------------- */
 async function go() {
   const log = document.getElementById('log');
   try { await document.fonts.ready; } catch (e) {}
   await new Promise(r => setTimeout(r, 400));
 
+  const shot = document.getElementById('shot');
   const jobs = [
     ['og-card.png', document.getElementById('og'), drawOg],
-    ['wanted-poster.png', document.getElementById('poster'), drawPoster]
+    ['wanted-poster.png', document.getElementById('poster'), drawPoster],
+    ['itch-cover.png', document.getElementById('cover'), drawCover],
+    ['shot-1-gulch.png', shot, c => shotOf(c, 'gulch', 90)],
+    ['shot-2-mine.png', shot, c => shotOf(c, 'mine', 90)],
+    ['shot-3-duel.png', shot, c => shotOf(c, 'duel', 60)],
+    ['shot-4-ride.png', shot, c => shotOf(c, 'ride', 200)],
+    ['shot-5-ghost.png', shot, c => shotOf(c, 'ghost', 90)]
   ];
   const lines = [];
   for (const [name, cv, fn] of jobs) {

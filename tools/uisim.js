@@ -48,13 +48,22 @@ function fakeCtx() {
   });
 }
 
+const els = {};
 function fakeEl(id) {
-  return {
+  if (els[id]) return els[id];
+  const on = {};
+  return (els[id] = {
     id, style: {}, width: 960, height: 540, textContent: '',
     getContext: () => fakeCtx(),
-    addEventListener() {}, removeEventListener() {}, remove() {},
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 960, height: 540 })
-  };
+    addEventListener(t, fn) { (on[t] = on[t] || []).push(fn); },
+    removeEventListener(t, fn) {
+      const a = on[t] || []; const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1);
+    },
+    remove() {},
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 960, height: 540 }),
+    /* the editor is mouse-driven, so the tests have to be able to click */
+    fire(t, ev) { (on[t] || []).slice().forEach(fn => fn(ev)); }
+  });
 }
 
 /* ---------------- the window this thing thinks it is in -------------- */
@@ -311,6 +320,79 @@ frames(2);
 ok('but a tap still lets you look around', Game.debug().screen === 'title');
 env.matchMedia = q => ({ matches: /pointer: fine/.test(q), media: q,
                          addEventListener() {}, addListener() {} });
+
+group('the editor is driven by the mouse');
+boot('');
+frames(4);
+Game.goto('editor');
+frames(2);
+const cv = env.document.getElementById('game');
+const ed = Screens.editor.S;
+const at = (x, y, b) => ({ clientX: x, clientY: y, button: b || 0,
+                           preventDefault() {}, deltaY: 0 });
+const move = (x, y) => { cv.fire('mousemove', at(x, y)); };
+const down = (x, y, b) => { cv.fire('mousedown', at(x, y, b)); frames(2); };
+const up = () => { env.fire('mouseup', {}); frames(2); };
+
+ed.L = Lvl.blank(); ed.camX = 0; ed.camY = 150;
+
+/* a point tool drops one thing where the pointer is */
+ed.tool = 6;                                   /* SILVER */
+const coins0 = ed.L.c.length;
+move(300, 200); down(300, 200); up();
+ok('clicking with a point tool places one thing',
+   ed.L.c.length === coins0 + 1, 'coins ' + coins0 + ' -> ' + ed.L.c.length);
+ok('and it lands in world space, not screen space',
+   ed.L.c[ed.L.c.length - 1].y === 350,
+   JSON.stringify(ed.L.c[ed.L.c.length - 1]));
+
+/* a rect tool draws by dragging, and only commits on release */
+ed.tool = 1;                                   /* PLANK */
+const planks0 = ed.L.p.length;
+move(400, 240); down(400, 240);
+ok('a drag in progress has not committed anything', ed.L.p.length === planks0);
+move(560, 240); up();
+const plank = ed.L.p[ed.L.p.length - 1];
+ok('releasing commits the rectangle', ed.L.p.length === planks0 + 1);
+ok('the plank is as wide as the drag and one board thick',
+   plank && plank.w === 160 && plank.h === 16, JSON.stringify(plank));
+
+/* a drag too small to be a real ledge is thrown away */
+const planks1 = ed.L.p.length;
+move(600, 240); down(600, 240); move(608, 240); up();
+ok('a drag of a few pixels is discarded', ed.L.p.length === planks1);
+
+/* the right button rubs things out */
+move(480, 240); down(480, 240, 2); up();
+ok('right-clicking erases what is under the pointer',
+   ed.L.p.length === planks1 - 1, 'planks ' + ed.L.p.length);
+
+/* nothing is placed on the chrome at the top or the bottom */
+ed.tool = 6;
+const coins1 = ed.L.c.length;
+move(300, 20); down(300, 20); up();
+move(300, 520); down(300, 520); up();
+ok('the toolbars are not part of the canvas', ed.L.c.length === coins1);
+
+/* the keyboard drives the tools, the channel and the owner */
+ed.tool = 0; key('Period');
+ok('. steps to the next tool', ed.tool === 1);
+key('Comma');
+ok(', steps back', ed.tool === 0);
+key('Digit3');
+ok('a number key picks a tool outright', ed.tool === 2);
+const ch0 = ed.ch; key('BracketRight');
+ok('] changes the door channel', ed.ch === (ch0 === 4 ? 1 : ch0 + 1));
+const who0 = ed.whoI; key('KeyO');
+ok('O changes who a plate answers to', ed.whoI !== who0);
+
+/* and T hands the sheet to the real engine */
+key('KeyT'); frames(4);
+ok('T plays what you just built',
+   Game.debug().mode === 'play' && Game.debug().stageIdx === -1,
+   JSON.stringify(Game.debug()));
+ok('the level under test is the one on the sheet',
+   Play.state.def.name === ed.L.title);
 
 group('every screen survives being drawn');
 boot('');

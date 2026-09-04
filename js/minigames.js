@@ -338,8 +338,15 @@ const Vault = (() => {
         FX.say(CFG.W / 2, 190, 'HELD STILL', PAL.teal, 20);
       } else {
         S.fails++;
-        const open = S.dials.find(d => d.solved);
-        if (open) { open.solved = false; S.solvedCount--; }
+        /* the tumbler does not just unlatch, it SPINS. Leaving the
+           pointer sitting on the old notch made the penalty free: one
+           keypress and you had it back. */
+        const open = S.dials.filter(d => d.solved).pop();
+        if (open) {
+          open.solved = false; S.solvedCount--;
+          open.target = rnd(Math.PI * 2);
+          open.angle = (open.target + rnd(Math.PI * 1.4, 0.6)) % (Math.PI * 2);
+        }
         S.msg = 'SEEN  ·  A TUMBLER SLIPPED'; S.msgT = 2.0;
         Snd.play('wrong'); FX.shake(8, 0.4); FX.flash(PAL.redDk, 0.3);
         if (S.fails >= 3) { S.phase = 'lost'; S.phaseT = 0; Snd.play('lose'); return; }
@@ -355,7 +362,10 @@ const Vault = (() => {
     if (Input.ph(2, 'right')) { S.listen = (S.listen + 1) % DIAL_N; Snd.play('move'); }
 
     /* ---- ARSHIA : pick a dial and turn it ---- */
-    if (Input.ph(1, 'up')) { S.sel = (S.sel + DIAL_N - 1) % DIAL_N; Snd.play('gear'); }
+    /* S is also his half of the freeze. While the lamp is coming round,
+       neither key moves his selection - otherwise holding still costs
+       you your place on the dial. */
+    if (Input.ph(1, 'up') && !S.guardWarn) { S.sel = (S.sel + DIAL_N - 1) % DIAL_N; Snd.play('gear'); }
     if (Input.ph(1, 'down') && !S.guardWarn) { S.sel = (S.sel + 1) % DIAL_N; Snd.play('gear'); }
     const turn = Input.axis(1);
     const d = S.dials[S.sel];

@@ -10,7 +10,7 @@
 
      - you cannot walk off the left edge of a level
      - the crate door needs the crate, not a footstep
-     - a latching door stays open once solved
+     - a two-plate door needs both of them, and latches once open
      - Rojina can really reach the ledges marked as hers
      - Arshia cannot reach those same ledges by jumping
      - the lasso builds a swing instead of dying on the rope
@@ -161,26 +161,43 @@ section('THE CRATE DOOR');
 }
 
 /* ==================================================================== */
-section('THE LATCHING DOOR');
+section('THE TWO-PLATE DOOR');
 {
+  /* Door two is the handshake the chapter promises: her up on the ledge
+     she alone can reach, him down on the floor, both at the same moment.
+     It used to be a one-plate door with a dead second plate parked on the
+     far side, which is why these checks are this specific.            */
   const S = startStage('gulch');
   const gate = S.gates.find(g => g.id === 'g2');
-  const plate = S.plates.find(p => p.id === 'p2a');
+  const hers = S.plates.find(p => p.id === 'p2a');
+  const his = S.plates.find(p => p.id === 'p2b');
   check('door two latches', gate.latch === true);
-  check('plate p2a is hers alone', plate.who === 'rojina');
+  check('it wants both plates, not either', gate.mode === 'all');
+  check('plate p2a is hers alone', hers.who === 'rojina');
+  check('both plates sit on the near side of the door',
+        hers.x < gate.x && his.x < gate.x,
+        'hers x' + hers.x + ' his x' + his.x + ' door x' + gate.x);
 
-  S.a.x = plate.x + 10; S.a.y = plate.y - 60;
+  const onHers = () => { S.r.x = hers.x + 10; S.r.y = hers.y - 44; S.r.vy = 0; };
+  const onHis = () => { S.a.x = his.x + 10; S.a.y = his.y - 46; S.a.vy = 0; };
+  const away = b => { b.x = 2340; b.y = 428; b.vy = 0; };
+
+  S.a.x = hers.x + 10; S.a.y = hers.y - 60;
   step(30);
   check('Arshia on her plate does not open it', gate.open === false);
 
-  S.a.x = 2340; S.a.y = 428;
-  S.r.x = plate.x + 10; S.r.y = plate.y - 44; S.r.vy = 0;
-  step(30);
-  check('Rojina on her plate opens it', gate.open === true);
+  away(S.a); onHers(); step(30);
+  check('her plate alone is not enough', gate.open === false);
 
-  S.r.x = 2340; S.r.y = 428;
-  step(60);
-  check('it stays open after she steps off', gate.open === true);
+  away(S.r); onHis(); step(30);
+  check('his plate alone is not enough', gate.open === false);
+
+  onHers(); onHis(); step(30);
+  check('both of them at once opens it', gate.open === true,
+        'hers ' + hers.on + ' his ' + his.on);
+
+  away(S.a); away(S.r); step(60);
+  check('and it stays open once they have managed it', gate.open === true);
   clearKeys();
 }
 

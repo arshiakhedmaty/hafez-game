@@ -52,7 +52,7 @@ const PLATE = (id, x, top, who, w) =>
 /*   4. the split route: her double jump vs his lasso                   */
 /* ------------------------------------------------------------------ */
 const arch1a = ARCH('g1', 560, 470, ['p1'], 'all', null, false);
-const arch1b = ARCH('g2', 2760, 470, ['p2a', 'p2b'], 'any');
+const arch1b = ARCH('g2', 2760, 470, ['p2a', 'p2b'], 'all');
 
 /* a straight run of ledges: n of them, `w` wide, `gap` apart, every other
    one raised by `dy`. Keeps long stretches honest by construction.      */
@@ -67,14 +67,14 @@ const RUN_END = (x, n, w, gap) => x + n * (w + gap) - gap;
 
 /* CHAPTER 3 : THE DEEP MINE  -- floor at y = 510 */
 const arch3a = ARCH('gm1', 1120, 510, ['m1'], 'all', 'timber', false);
-const arch3b = ARCH('gm2', 3100, 510, ['m2', 'm3'], 'any', 'timber');
+const arch3b = ARCH('gm2', 3100, 510, ['m2', 'm3'], 'all', 'timber');
 
 /* THE HIDDEN CHAPTER : GHOST TRAIL -- floor at y = 490 */
 const archHa = ARCH('h1', 600, 490, ['h1a'], 'all', null, false);
 
 /* CHAPTER 7 : THE LAST SUNSET -- floor at y = 490 */
 const arch7a = ARCH('sg1', 560, 490, ['s1'], 'all', null, false);
-const arch7b = ARCH('sg2', 1500, 490, ['s2a', 's2b'], 'any');
+const arch7b = ARCH('sg2', 1500, 490, ['s2a', 's2b'], 'all');
 
 const STAGES = [
 
@@ -155,7 +155,7 @@ const STAGES = [
     plates: [
       PLATE('p1', 400, 470, 'crate'),            /* only the crate holds it */
       PLATE('p2a', 2440, 362, 'rojina'),         /* her high ledge       */
-      PLATE('p2b', 2830, 470)                    /* his side of door two */
+      PLATE('p2b', 2620, 470)                    /* his, on the near side */
     ],
     crates: [{ x: 230, y: 424, w: 46, h: 46 }],
 
@@ -259,7 +259,7 @@ const STAGES = [
     plates: [
       PLATE('m1', 960, 510, 'crate'),            /* only the crate holds it */
       PLATE('m2', 2720, 402, 'rojina'),
-      PLATE('m3', 3180, 510)
+      PLATE('m3', 2900, 510)
     ],
     crates: [{ x: 860, y: 464, w: 46, h: 46 }],
     rings: [{ x: 620, y: 300 }, { x: 1700, y: 260 }, { x: 2400, y: 340 }],
@@ -386,10 +386,13 @@ const STAGES = [
     plates: [
       PLATE('s1', 380, 490, 'crate'),
       PLATE('s2a', 1220, 382, 'rojina'),
-      PLATE('s2b', 1580, 490)
+      PLATE('s2b', 1360, 490)
     ],
     crates: [{ x: 200, y: 444, w: 46, h: 46 }],
-    rings: [{ x: 760, y: 320 }, { x: 1400, y: 300 },
+    /* the ring used to hang at 1400, which let him swing up onto the
+       1200 ledge - the one ledge in this chapter that is supposed to be
+       hers alone. Moved out over the lift, where it is still useful. */
+    rings: [{ x: 760, y: 320 }, { x: 1740, y: 296 },
             { x: 2080, y: 330 }, { x: 2170, y: 318 },
             { x: 2900, y: 300 }, { x: 3600, y: 300 }],
     hazards: [

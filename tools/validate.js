@@ -22,6 +22,7 @@ const { CFG, STAGES } = new Function(src + '\n;return { CFG, STAGES };')();
 
 /* ---- the movement model, mirroring js/platformer.js ---- */
 const G = CFG.GRAV;
+const LEASH = 540;         /* must match platformer.js */
 const CHARS = {
   arshia: { run: 212, jump: 660, w: 22, h: 42, dbl: false },
   rojina: { run: 236, jump: 620, w: 20, h: 40, dbl: true }
@@ -181,9 +182,42 @@ for (const st of STAGES) {
     const plates = (st.plates || []).filter(p => g.openBy.includes(p.id));
     if (plates.length !== g.openBy.length)
       bad('gate ' + g.id + ' names a plate that does not exist: ' + g.openBy.join(','));
-    if (g.mode !== 'any' && plates.length > 1)
-      warn('gate ' + g.id + ' needs ALL of ' + g.openBy.join(' + ') +
-           ' held at once - check that is really possible');
+    if (g.mode !== 'any' && plates.length > 1) {
+      /* who is physically able to stand on each one at the same time */
+      const holders = plates.map(pl => {
+        const top = pl.y + (pl.h || 11);
+        const out = [];
+        if (pl.who !== 'rojina' && pl.who !== 'crate' &&
+            standsOn(A, pl.x + pl.w / 2, top, 30)) out.push('arshia');
+        if (pl.who !== 'arshia' && pl.who !== 'crate' &&
+            standsOn(R, pl.x + pl.w / 2, top, 30)) out.push('rojina');
+        if (pl.who === 'crate') out.push('crate');
+        return { pl, out };
+      });
+      const empty = holders.filter(h => !h.out.length);
+      if (empty.length)
+        bad('gate ' + g.id + ' wants ' + empty.map(h => h.pl.id).join(',') +
+            ' held, but nobody can stand there');
+      /* two plates, two people: they must not need the same pair of feet */
+      else if (plates.length === 2) {
+        const [x, y] = holders;
+        const split = x.out.some(a => y.out.some(b => a !== b));
+        if (!split)
+          bad('gate ' + g.id + ' needs ' + x.pl.id + ' and ' + y.pl.id +
+              ' at once but only ' + x.out.join('/') + ' can hold either');
+        const apart = Math.abs((x.pl.x + x.pl.w / 2) - (y.pl.x + y.pl.w / 2));
+        if (apart > LEASH)
+          bad('gate ' + g.id + ' plates are ' + apart.toFixed(0) +
+              'px apart, past the ' + LEASH + 'px leash');
+      }
+      /* and the plates have to be on the near side of the door, or you
+         can only reach them once it is already open */
+      plates.forEach(pl => {
+        if (pl.x > g.x && pl.who !== 'crate')
+          bad('gate ' + g.id + ' plate ' + pl.id + ' sits past the door at x' +
+              g.x + ' - it can only be reached after the door opens');
+      });
+    }
     /* the lintel must be too high to hop over */
     const lint = (st.solids || []).find(s => Math.abs(s.x - g.x) < 2 && s.y < g.y);
     if (!lint) warn('gate ' + g.id + ' has no lintel above it - it can be jumped');

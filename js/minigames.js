@@ -295,7 +295,7 @@ const Vault = (() => {
     const S = {
       ts, score: 0, maxScore: DIAL_N, fails: 0, kisses: 0, elapsed: 0,
       dials: [], sel: 0, listen: 0,
-      guard: 0, guardSpeed: 0.20 / ts, guardWarn: 0, frozen: false,
+      guard: 0, guardSpeed: 0.20 / ts, guardWarn: 0,
       solvedCount: 0, msg: '', msgT: 0,
       lostMsg: 'THE GUARD CAUGHT THEM'
     };
@@ -312,7 +312,7 @@ const Vault = (() => {
       S.dials.push({ angle: rnd(Math.PI * 2), target: rnd(Math.PI * 2), solved: false, glow: 0 });
     }
     S.sel = 0; S.listen = 0; S.guard = 0; S.guardWarn = 0;
-    S.solvedCount = 0; S.fails = 0; S.frozen = false;
+    S.solvedCount = 0; S.fails = 0;
   }
 
   function angDiff(a, b) {

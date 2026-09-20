@@ -20,11 +20,7 @@ const root = path.join(__dirname, '..');
 const dist = path.join(root, 'dist');
 fs.mkdirSync(dist, { recursive: true });
 
-const JS = [
-  'js/config.js', 'js/utils.js', 'js/input.js', 'js/audio.js', 'js/art.js',
-  'js/particles.js', 'js/scenery.js', 'js/levels.js', 'js/platformer.js',
-  'js/minigames.js', 'js/ride.js', 'js/ui.js', 'js/custom.js', 'js/game.js'
-];
+const { GAME: JS } = require('./files');
 
 /* the bundle normally boots on DOMContentLoaded; once it is inflated that
    event has already fired, so boot it directly instead */

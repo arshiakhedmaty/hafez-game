@@ -34,35 +34,10 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 
+const { loadEngine } = require('./files');
 const held = new Set(), pressed = new Set();
-const stubs = `
-const Snd = { play(){}, music(){}, resume(){}, init(){}, vol(){}, S:{} };
-const FX = { dust(){}, land(){}, sparks(){}, hearts(){}, smoke(){}, shard(){},
-  speedLine(){}, say(){}, shake(){}, flash(){}, hitstop(){}, update(){}, draw(){},
-  drawFlash(){}, applyShake(){}, clear(){}, spawn(){}, get slowmo(){ return 0; } };
-const Sky = { draw(){} };
-const Props = new Proxy({}, { get: () => () => {} });
-function drawChar(){} function drawHeart(){} function drawPortrait(){}
-function star(){} function drawGlasses(){} function drawPendant(){}
-const Input = {
-  MAPS: { p1:{ left:'KeyA', right:'KeyD', up:'KeyW', down:'KeyS', act:'KeyE', act2:'ShiftLeft', kiss:'KeyQ' },
-          p2:{ left:'ArrowLeft', right:'ArrowRight', up:'ArrowUp', down:'ArrowDown', act:'Slash', act2:'Period', kiss:'ShiftRight' } },
-  held: c => __held.has(c), hit: c => __pressed.has(c), up: () => false,
-  p: (n,a) => __held.has(Input.MAPS['p'+n][a]),
-  ph: (n,a) => __pressed.has(Input.MAPS['p'+n][a]), pu: () => false,
-  axis(n){ return (__held.has(this.MAPS['p'+n].right)?1:0) - (__held.has(this.MAPS['p'+n].left)?1:0); },
-  anyKey: () => false, last: () => '',
-  menuUp: () => false, menuDown: () => false, menuLeft: () => false,
-  menuRight: () => false, menuOk: () => false, menuBack: () => false,
-  endFrame(){ __pressed.clear(); }
-};
-`;
-const src = ['js/config.js', 'js/utils.js', 'js/levels.js'].map(read).join('\n;\n')
-  + '\n;\n' + stubs + '\n;\n'
-  + ['js/platformer.js', 'js/minigames.js', 'js/ride.js'].map(read).join('\n;\n')
-  + '\n;\nreturn { CFG, STAGES, Play, Mini, Duel, Vault, Ride };';
-const Save = { data: { best: {} } };
-const { CFG, STAGES, Play, Mini } = new Function('__held', '__pressed', 'Save', src)(held, pressed, Save);
+const { CFG, STAGES, Play, Mini } =
+  loadEngine(held, pressed, ['CFG', 'STAGES', 'Play', 'Mini', 'Duel', 'Vault', 'Ride']);
 
 let pass = 0, fail = 0;
 const ok = (n, c, d) => {

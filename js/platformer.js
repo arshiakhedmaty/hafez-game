@@ -40,14 +40,19 @@ const Play = (() => {
       vx: 0, vy: 0, face: 1, grounded: false, coyote: 0, buf: 0, jumps: 0,
       anim: 'idle', expr: 'normal', t: rnd(4), airT: 0,
       maxHearts, hearts: maxHearts, iframe: 0, down: false, downT: 0,
-      rope: null, ropeLen: 0, reviveT: 0, carry: null, stepT: 0,
-      blinkSeed: who === 'rojina' ? 0.45 : 0, pushT: 0, deadPose: 0,
+      rope: null, ropeLen: 0, reviveT: 0, stepT: 0,
+      blinkSeed: who === 'rojina' ? 0.45 : 0, pushT: 0,
       /* last patch of trustworthy ground - a fall returns them here, so a
          missed jump costs a heart and some time, never the run itself */
       safeX: x, safeY: y, safeT: 0
     };
   }
   const cx = p => p.x + p.w / 2;
+  /* Every body wears a name tag and a row of hearts above its head, and
+     every float anchored to a body was starting underneath them - so
+     'CAUGHT THE LEDGE' and 'NO RING' and '-1' all rose straight through
+     the name. This is the top of that stack: floats start above it. */
+  const overHead = p => p.y - (p.who === 'rojina' ? 66 : 38);
   const cy = p => p.y + p.h / 2;
 
   /* ---------------------------------------------------------------- */
@@ -285,7 +290,7 @@ const Play = (() => {
         FX.dust(cx(p), p.y + p.h, 6, -p.face);
       } else {
         Snd.play('lasso');
-        FX.say(cx(p), p.y - 14, 'NO RING', PAL.parchDk, 13);
+        FX.say(cx(p), overHead(p), 'NO RING', PAL.parchDk, 13);
       }
     }
     if (p.rope) {
@@ -410,6 +415,21 @@ const Play = (() => {
           cr.vx = -shove; A.pushT = 0.12;
         }
       }
+      /* A crate plate is a recess, not a paving stone: the crate drops
+         into it and stays. Shoving it straight over the top was the
+         first thing everybody did - hold right from the spawn and it
+         sails across, the door shuts again behind it, and it ends up
+         somewhere useless - and there is never a reason to want it any
+         further along than the plate it was made for. */
+      const mid = cr.x + cr.w / 2;
+      const recess = S.plates.find(pl => pl.who === 'crate' &&
+        Math.abs(mid - (pl.x + pl.w / 2)) < 14);
+      if (recess) {
+        if (cr.vx) { Snd.play('latch'); FX.dust(mid, cr.y + cr.h, 6, 0); }
+        cr.x = recess.x + recess.w / 2 - cr.w / 2;
+        cr.vx = 0;
+      }
+
       moveBody(cr, cr.vx * dt, cr.vy * dt, solids);
       if (cr.vx) FX.dust(cr.x + cr.w / 2, cr.y + cr.h, 1, -Math.sign(cr.vx));
 
@@ -465,7 +485,8 @@ const Play = (() => {
         if (wrong && pl.nagT <= 0) {
           pl.nagT = 2.2;
           const owner = LOOK[pl.who];
-          FX.say(pl.x + pl.w / 2, pl.y - 40,
+          /* low, so it does not drift up through the sign on the door */
+          FX.say(pl.x + pl.w / 2, pl.y - 14,
                  owner ? 'THIS ONE IS ' + owner.name + "'S" : 'TOO LIGHT  ·  PUSH THE CRATE ON',
                  owner ? owner.accent : PAL.gold, 14);
           Snd.play('wrong');
@@ -592,7 +613,7 @@ const Play = (() => {
     Snd.play('dead');
     FX.shake(6, 0.3); FX.flash(PAL.redDk, 0.2);
     FX.sparks(cx(p), cy(p), 14, PAL.red);
-    FX.say(cx(p), p.y - 12, '-1', PAL.red, 18);
+    FX.say(cx(p), overHead(p), '-1', PAL.red, 18);
     if (p.hearts <= 0) knockDown(p);
   }
 
@@ -609,7 +630,7 @@ const Play = (() => {
     p.iframe = 1.2;
     Snd.play('dead');
     FX.shake(6, 0.3); FX.flash(PAL.redDk, 0.2);
-    FX.say(cx(p), p.y - 14, 'CAUGHT THE LEDGE', PAL.parchDk, 14);
+    FX.say(cx(p), overHead(p), 'CAUGHT THE LEDGE', PAL.parchDk, 14);
     if (p.hearts <= 0) knockDown(p);
   }
 
@@ -619,7 +640,10 @@ const Play = (() => {
     S.deaths++;
     Snd.play('dead');
     FX.shake(7, 0.35);
-    FX.say(cx(p), p.y - 16, LOOK[p.who].name + ' IS DOWN', LOOK[p.who].accent, 17);
+    /* they are usually standing on the same spot when it happens, so
+       the two of these have to start at different heights or they are
+       printed straight on top of each other */
+    FX.say(cx(p), overHead(p), LOOK[p.who].name + ' IS DOWN', LOOK[p.who].accent, 17);
   }
 
   function reviveCheck(fallen, helperN, helper) {
@@ -646,17 +670,22 @@ const Play = (() => {
     Snd.play('kiss'); Snd.play('revive');
     FX.hearts(cx(p), cy(p) - 12, 20);
     FX.flash('#ffb8cf', 0.35);
-    FX.say(cx(p), p.y - 26, 'BACK FROM THE DEAD', LOOK[p.who].accent, 16);
-    FX.say(cx(helper), helper.y - 40, '-1 MAX HEART', PAL.parchDk, 13);
+    FX.say(cx(p), overHead(p), 'BACK FROM THE DEAD', LOOK[p.who].accent, 16);
+    FX.say(cx(helper), overHead(helper) - 20, '-1 MAX HEART', PAL.parchDk, 13);
   }
 
   function respawn() {
     const A = S.a, R = S.r;
-    const base = DIFF[S.difficulty].hearts;
     [[A, S.cpA], [R, S.cpR]].forEach(([p, cp]) => {
       p.x = cp[0]; p.y = cp[1]; p.vx = 0; p.vy = 0;
       p.down = false; p.downT = 0; p.reviveT = 0; p.rope = null;
-      p.maxHearts = base; p.hearts = base; p.iframe = 1.2;
+      /* A wipe refills what health they have; it does NOT hand back the
+         hearts a kiss cost them. Resetting maxHearts here made dying
+         together the cheapest cure in the game - a pair down to one
+         heart each was better off jumping off a cliff than reviving
+         each other, which inverts the one mechanic the game is built
+         on. A wipe costs time and progress. That is the price. */
+      p.hearts = p.maxHearts; p.iframe = 1.2;
       p.safeX = cp[0]; p.safeY = cp[1]; p.safeT = 0;
       p.anim = 'idle'; p.expr = 'normal';
     });
@@ -910,14 +939,18 @@ const Play = (() => {
         c.closePath();
         c.fillStyle = col; c.fill();
         c.lineWidth = 1.5; c.strokeStyle = PAL.ink; c.stroke();
-        if (LOOK[pl.who]) {
-          txt(c, LOOK[pl.who].name, px, py - 34 + bob,
-              { size: 11, font: FONT.title, fill: col, stroke: PAL.ink, lw: 3.5 });
-        }
+        /* One line, not two. HELD only ever appears while somebody is
+           standing on the plate, and a body standing on a plate has its
+           own name tag at exactly that height - so the two of them were
+           always printed across each other. Whoever it belongs to only
+           matters while it is empty. */
         if (pl.on) {
           c.globalAlpha = fade;
-          txt(c, 'HELD', px, py - 48 + bob,
+          txt(c, 'HELD', px, py - 34 + bob,
               { size: 11, font: FONT.title, fill: PAL.teal, stroke: PAL.ink, lw: 3.5 });
+        } else if (LOOK[pl.who]) {
+          txt(c, LOOK[pl.who].name, px, py - 34 + bob,
+              { size: 11, font: FONT.title, fill: col, stroke: PAL.ink, lw: 3.5 });
         }
         c.restore();
       }
@@ -1039,6 +1072,11 @@ const Play = (() => {
 
   function drawReviveRing(c, fallen, helper) {
     if (!fallen.down) return;
+    /* With both of them on the floor there is nobody left to do any
+       kissing, and the two prompts, the two IS DOWN floats and the wipe
+       banner all landed in the same band of the screen on top of each
+       other. The wipe says everything that matters at that point. */
+    if (helper.down) return;
     const near = dist(cx(fallen), cy(fallen), cx(helper), cy(helper)) < KISS_RANGE;
     const helperKey = helper.who === 'arshia' ? 'Q' : 'R-SHIFT';
     c.save();

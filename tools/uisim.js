@@ -113,15 +113,14 @@ const stubs = `
 const Snd = { play(){}, music(){}, resume(){}, init(){}, vol(){}, S:{} };
 `;
 
-const FILES = [
-  'js/config.js', 'js/utils.js', 'js/input.js',
-  'js/art.js', 'js/particles.js', 'js/scenery.js', 'js/levels.js',
-  'js/platformer.js', 'js/minigames.js', 'js/ride.js',
-  'js/ui.js', 'js/custom.js', 'js/game.js'
-];
+/* Everything the page loads except the audio, which wants a real
+   AudioContext and is replaced by the stub above. config and utils are
+   pulled in ahead of the stub so Snd is declared once, after them. */
+const { GAME } = require('./files');
+const FILES = GAME.filter(f => ['js/config.js', 'js/utils.js', 'js/audio.js'].indexOf(f) < 0);
 
 const src = read('js/config.js') + '\n;\n' + read('js/utils.js') + '\n;\n' + stubs
-  + '\n;\n' + FILES.slice(2).map(read).join('\n;\n')
+  + '\n;\n' + FILES.map(read).join('\n;\n')
   + '\n;\nreturn { CFG, STAGES, SECRET_IDX, secretEarned, secretProgress,'
   + ' Play, Mini, Screens, Save, Game, Lvl, Input, DIFF, UIT };';
 
@@ -462,6 +461,22 @@ ok('the handler lives above every screen rather than inside a menu',
    /F11[\s\S]{0,200}toggleFullscreen\(\)/.test(bootSrc));
 ok('and it stops the browser doing its own thing on top',
    /F11[\s\S]{0,160}preventDefault/.test(bootSrc));
+
+group('the page and the manifest agree');
+{
+  /* index.html is the one place that cannot require() the manifest, so
+     it is the one place that can silently drift out of step with it.
+     Adding js/ride.js and then js/custom.js meant hand-editing the list
+     in nine files; this is what stops the tenth going missing. */
+  const { checkIndexHtml, GAME } = require('./files');
+  const r = checkIndexHtml();
+  ok('index.html loads exactly what tools/files.js lists', r.ok,
+     (r.missing.length ? 'missing ' + r.missing.join(',') : '') +
+     (r.extra.length ? ' extra ' + r.extra.join(',') : '') +
+     (r.order ? '' : ' wrong order'));
+  ok('and in the same order, because the game has no module system',
+     r.found.join() === GAME.join());
+}
 
 group('every screen survives being drawn');
 boot('');

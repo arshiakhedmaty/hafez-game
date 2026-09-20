@@ -63,7 +63,6 @@ function RUN(x, y, n, w, gap, dy, mk) {
     out.push(mk(x + i * (w + gap), y - (i % 2 ? dy : 0), w, 16));
   return out;
 }
-const RUN_END = (x, n, w, gap) => x + n * (w + gap) - gap;
 
 /* CHAPTER 3 : THE DEEP MINE  -- floor at y = 510 */
 const arch3a = ARCH('gm1', 1120, 510, ['m1'], 'all', 'timber', false);

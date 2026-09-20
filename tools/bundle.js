@@ -20,11 +20,7 @@ const root = path.join(__dirname, '..');
 const dist = path.join(root, 'dist');
 
 const CSS = ['css/style.css'];
-const JS = [
-  'js/config.js', 'js/utils.js', 'js/input.js', 'js/audio.js', 'js/art.js',
-  'js/particles.js', 'js/scenery.js', 'js/levels.js', 'js/platformer.js',
-  'js/minigames.js', 'js/ride.js', 'js/ui.js', 'js/custom.js', 'js/game.js'
-];
+const { GAME: JS } = require('./files');
 
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 /* a closing script tag inside a string literal would end the block early */

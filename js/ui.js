@@ -424,7 +424,7 @@ Screens.howto = {
       ['WHEN ONE OF YOU FALLS, THEY STAY DOWN',
        'Reach them and HOLD your kiss key. They come back with one less heart, forever.'],
       ['IF YOU BOTH GO DOWN',
-       'Back to the last checkpoint, hearts restored. The clock does not stop.'],
+       'Back to the last checkpoint, patched up. The hearts a kiss cost stay gone.'],
       ['SILVER DOLLARS BUY THE CHAPTER NOBODY SEES',
        'Every dollar in every chapter opens an eighth one. Nothing else does.'],
       ['THERE IS A CLOCK IF YOU WANT ONE',
@@ -839,7 +839,7 @@ Screens.records = {
             fill: open ? PAL.parch : 'rgba(239,220,176,0.3)', align: 'left' });
       txt(c, b ? fmtTime(b.time) : '--', CFG.W - 150, y,
           { size: 13, font: FONT.ui, fill: b ? PAL.teal : PAL.parchDk, align: 'right' });
-      if (st.kind === 'platform')
+      if (st.kind === 'platform' && open)
         txt(c, (b ? b.coins : 0) + '/' + (st.coins || []).length, CFG.W - 62, y,
             { size: 12, font: FONT.ui, fill: PAL.gold, align: 'right' });
     });
@@ -927,8 +927,10 @@ Screens.desktop = {
     const gy = CFG.H - 96;
     c.fillStyle = PAL.ground; c.fillRect(0, gy, CFG.W, 96);
     c.fillStyle = PAL.groundTop; c.fillRect(0, gy, CFG.W, 4);
-    drawChar(c, 'arshia', { x: CFG.W / 2 - 70, y: gy, face: 1, anim: 'idle', t: UIT, scale: 1.9 });
-    drawChar(c, 'rojina', { x: CFG.W / 2 + 70, y: gy, face: -1, anim: 'idle',
+    /* out to the sides, so the last line of the card is not printed
+       across their knees */
+    drawChar(c, 'arshia', { x: 120, y: gy, face: 1, anim: 'idle', t: UIT, scale: 1.9 });
+    drawChar(c, 'rojina', { x: CFG.W - 120, y: gy, face: -1, anim: 'idle',
                             t: UIT + 0.8, scale: 1.9, blinkSeed: 0.45, expr: 'happy' });
     Chrome.woodSign(c, CFG.W / 2 - 250, 40, 500, 64);
     txt(c, CFG.TITLE, CFG.W / 2, 74,

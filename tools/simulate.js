@@ -22,48 +22,14 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 
-/* ---------------- stubs for everything visual or audible ------------- */
+/* The stubs, the file list and the loader all live in tools/files.js now:
+   this used to be twenty-five lines of do-nothing objects copied into
+   every test tool, and they drifted. */
+const { loadEngine } = require('./files');
 const held = new Set();
 const pressed = new Set();
-
-const stubs = `
-const Snd = { play(){}, music(){}, stopMisic(){}, stopMusic(){}, resume(){}, init(){}, vol(){}, S:{} };
-const FX = {
-  dust(){}, land(){}, sparks(){}, hearts(){}, smoke(){}, shard(){}, speedLine(){},
-  say(){}, shake(){}, flash(){}, hitstop(){}, update(){}, draw(){}, drawFlash(){},
-  applyShake(){}, clear(){}, spawn(){}, get slowmo(){ return 0; }
-};
-const Sky = { draw(){} };
-const Props = new Proxy({}, { get: () => () => {} });
-function drawChar(){} function drawHeart(){} function drawPortrait(){}
-function star(){} function drawGlasses(){} function drawPendant(){}
-const Input = {
-  MAPS: {
-    p1:{ left:'KeyA', right:'KeyD', up:'KeyW', down:'KeyS', act:'KeyE', act2:'ShiftLeft', kiss:'KeyQ' },
-    p2:{ left:'ArrowLeft', right:'ArrowRight', up:'ArrowUp', down:'ArrowDown', act:'Slash', act2:'Period', kiss:'ShiftRight' }
-  },
-  held: c => __held.has(c),
-  hit:  c => __pressed.has(c),
-  up:   () => false,
-  p:  (n,a) => __held.has(Input.MAPS['p'+n][a]),
-  ph: (n,a) => __pressed.has(Input.MAPS['p'+n][a]),
-  pu: () => false,
-  axis(n){ return (__held.has(this.MAPS['p'+n].right)?1:0) - (__held.has(this.MAPS['p'+n].left)?1:0); },
-  anyKey: () => false, last: () => '',
-  menuUp: () => false, menuDown: () => false, menuLeft: () => false,
-  menuRight: () => false, menuOk: () => false, menuBack: () => false,
-  endFrame(){ __pressed.clear(); }
-};
-`;
-
-const src = [
-  'js/config.js', 'js/utils.js', 'js/levels.js'
-].map(read).join('\n;\n')
-  + '\n;\n' + stubs + '\n;\n'
-  + [ 'js/platformer.js', 'js/minigames.js', 'js/ride.js' ].map(read).join('\n;\n')
-  + '\n;\nreturn { CFG, STAGES, Play, Duel, Vault, Ride, Mini, LOOK, DIFF };';
-
-const API = new Function('__held', '__pressed', src)(held, pressed);
+const API = loadEngine(held, pressed,
+  ['CFG', 'STAGES', 'Play', 'Duel', 'Vault', 'Ride', 'Mini', 'LOOK', 'DIFF']);
 const { CFG, STAGES, Play, Duel, Mini } = API;
 
 /* ---------------- tiny test harness ---------------- */

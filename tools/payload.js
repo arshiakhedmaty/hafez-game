@@ -4,15 +4,14 @@ const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
 
+const { GAME } = require('./files');
 const FILES = [
   'index.html', 'preview.html', 'README.md', 'vercel.json', '.gitignore',
-  'server.js',
-  'css/style.css',
-  'js/config.js', 'js/utils.js', 'js/input.js', 'js/audio.js', 'js/art.js',
-  'js/particles.js', 'js/scenery.js', 'js/levels.js', 'js/platformer.js',
-  'js/minigames.js', 'js/ride.js', 'js/ui.js', 'js/custom.js', 'js/game.js',
-  'tools/validate.js', 'tools/simulate.js', 'tools/payload.js'
-];
+  'server.js', 'css/style.css'
+].concat(GAME).concat([
+  'tools/files.js', 'tools/validate.js', 'tools/simulate.js',
+  'tools/uisim.js', 'tools/audit.js', 'tools/playthrough.js', 'tools/payload.js'
+]);
 
 const out = FILES.map(f => ({
   file: f,

@@ -307,6 +307,81 @@ section('WALKING THE WHOLE OF CHAPTER ONE');
 }
 
 /* ==================================================================== */
+/* THE CRATE, WHICH USED TO END CHAPTERS                                */
+/* ==================================================================== */
+console.log('\nTHE CRATE CAN ACTUALLY BE SHOVED');
+{
+  const S = startStage('gulch');
+  const cr = S.crates[0], plate = S.plates[0];
+  /* A crate is a solid, so the collision solver zeroed his speed the
+     instant he touched one - and the shove was being read from that same
+     emptied number. It measured one pixel a second: three minutes of
+     holding the key to move this crate onto its plate. */
+  held.add('KeyD');
+  let reached = null;
+  for (let i = 0; i < 120 * 30 && reached === null; i++) {
+    Play.update(DT); pressed.clear();
+    if (plate.on) reached = i * DT;
+  }
+  clearKeys();
+  check('the crate reaches its plate in seconds, not minutes',
+        reached !== null && reached < 6, reached === null ? 'never' : reached.toFixed(1) + 's');
+  check('and that opens the door', S.gates[0].open);
+}
+
+console.log('\nAND IT CANNOT END THE CHAPTER');
+{
+  /* Hold right from the spawn - the first thing anybody does - and the
+     crate sails over its plate and stops flush against the shut door
+     with nought pixels in between. A crate is pushed, never pulled, so
+     shifting it back left needs him standing on its right, and there is
+     no right. The one plate that opens that door needs that crate. */
+  const S = startStage('gulch');
+  const cr = S.crates[0], gate = S.gates[0];
+  held.add('KeyD');
+  for (let i = 0; i < 120 * 14; i++) { Play.update(DT); pressed.clear(); }
+  clearKeys();
+  check('holding right does not leave the crate jammed against the door',
+        Math.abs(cr.x - cr.homeX) < 4 || gate.x - (cr.x + cr.w) > 24,
+        'crate ends at x' + Math.round(cr.x) + ', door at x' + gate.x);
+  /* prove it is still usable afterwards: he walks back round to its
+     left, the way a player would, and shoves it again */
+  held.add('KeyA');
+  for (let i = 0; i < 120 * 6; i++) { Play.update(DT); pressed.clear(); }
+  clearKeys();
+  held.add('KeyD');
+  let opened = false;
+  for (let i = 0; i < 120 * 20 && !opened; i++) {
+    Play.update(DT); pressed.clear();
+    if (S.plates[0].on) opened = true;
+  }
+  clearKeys();
+  check('and the door can still be opened after that', opened);
+}
+
+console.log('\nAND IT CANNOT BE LOST DOWN A HOLE');
+{
+  /* The mine's crate stands on a ledge with the ghost bridge's chasm
+     immediately to its left. Shove it off and nothing in the game could
+     ever bring it back. */
+  const S = startStage('mine');
+  const cr = S.crates[0];
+  S.r.x = 1060; S.r.y = 468; S.r.vx = 0; S.r.vy = 0;
+  S.a.x = cr.x + cr.w + 34; S.a.y = 468;
+  held.add('KeyA');
+  let fell = false;
+  for (let i = 0; i < 120 * 16; i++) {
+    Play.update(DT); pressed.clear();
+    if (cr.y > cr.homeY + 120) fell = true;
+  }
+  clearKeys();
+  check('the crate really can be shoved off the ledge', fell);
+  check('but it comes back rather than being gone for good',
+        Math.abs(cr.x - cr.homeX) < 4 && Math.abs(cr.y - cr.homeY) < 4,
+        'ended at x' + Math.round(cr.x) + ' y' + Math.round(cr.y));
+}
+
+/* ==================================================================== */
 console.log('\n--------------------------------------------');
 console.log(fail ? pass + ' passed, ' + fail + ' FAILED' : 'all ' + pass + ' checks passed');
 process.exit(fail ? 1 : 0);

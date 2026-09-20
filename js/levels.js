@@ -200,7 +200,12 @@ const STAGES = [
       { x: 6500, y: 320 }, { x: 6780, y: 370 }, { x: 7100, y: 420 },
       { x: 7345, y: 312 }, { x: 7550, y: 420 }, { x: 7725, y: 312 },
       { x: 8050, y: 420 }, { x: 8440, y: 370 }, { x: 8720, y: 320 },
-      { x: 9000, y: 270 }, { x: 9280, y: 220 }, { x: 9600, y: 170 }
+      /* the last dollar used to sit INSIDE the doorway. The exit fires as
+         soon as both of their boxes touch it and a coin is only picked up
+         within 26px of its middle, so it was possible to finish the
+         chapter holding 35 of 36 - and every dollar is what buys the
+         hidden chapter. It stands on the approach now. */
+      { x: 9000, y: 270 }, { x: 9280, y: 220 }, { x: 9500, y: 170 }
     ],
 
     checkpoints: [
@@ -266,10 +271,10 @@ const STAGES = [
     hazards: [{ x: 2000, y: 492, w: 70, h: 18, type: 'spikes' }],
     coins: [
       { x: 300, y: 460 }, { x: 490, y: 420 }, { x: 610, y: 390 },
-      { x: 730, y: 420 }, { x: 900, y: 460 }, { x: 1300, y: 460 },
+      { x: 730, y: 420 }, { x: 820, y: 460 }, { x: 1300, y: 460 },
       { x: 1570, y: 420 }, { x: 1705, y: 300 }, { x: 1830, y: 420 },
       { x: 2100, y: 460 }, { x: 2385, y: 420 }, { x: 2755, y: 337 },
-      { x: 2900, y: 460 }, { x: 3260, y: 460 }, { x: 3420, y: 460 }
+      { x: 2900, y: 460 }, { x: 3260, y: 460 }, { x: 3350, y: 460 }
     ],
     checkpoints: [{ x: 900, y: 510 }, { x: 1960, y: 510 }, { x: 2620, y: 510 }],
     exit: { x: 3380, y: 410, w: 60, h: 100 }
@@ -386,7 +391,7 @@ const STAGES = [
     plates: [
       PLATE('s1', 380, 490, 'crate'),
       PLATE('s2a', 1220, 382, 'rojina'),
-      PLATE('s2b', 1360, 490)
+      PLATE('s2b', 1420, 490)
     ],
     crates: [{ x: 200, y: 444, w: 46, h: 46 }],
     /* the ring used to hang at 1400, which let him swing up onto the
@@ -407,7 +412,7 @@ const STAGES = [
       { x: 2350, y: 440 }, { x: 2670, y: 402 }, { x: 2790, y: 262 },
       { x: 2910, y: 402 }, { x: 3080, y: 440 }, { x: 3350, y: 440 },
       { x: 3475, y: 400 }, { x: 3615, y: 380 }, { x: 3755, y: 400 },
-      { x: 3950, y: 440 }, { x: 4150, y: 440 }
+      { x: 3950, y: 440 }, { x: 4080, y: 440 }
     ],
     checkpoints: [{ x: 1100, y: 490 }, { x: 2220, y: 490 },
                   { x: 3020, y: 490 }, { x: 3860, y: 490 }],
@@ -490,11 +495,11 @@ const STAGES = [
       { x: 300, y: 440 }, { x: 470, y: 440 }, { x: 840, y: 430 },
       { x: 1000, y: 440 }, { x: 1212, y: 402 }, { x: 1342, y: 364 },
       { x: 1466, y: 402 }, { x: 1594, y: 360 }, { x: 1780, y: 440 },
-      { x: 1972, y: 316 }, { x: 2132, y: 340 }, { x: 2140, y: 400 },
-      { x: 2292, y: 340 }, { x: 2300, y: 400 }, { x: 2560, y: 440 },
+      { x: 1972, y: 316 }, { x: 2132, y: 340 }, { x: 2140, y: 418 },
+      { x: 2292, y: 340 }, { x: 2300, y: 418 }, { x: 2560, y: 440 },
       { x: 2745, y: 370 }, { x: 2885, y: 310 }, { x: 2942, y: 126 },
       { x: 3175, y: 280 }, { x: 3305, y: 270 }, { x: 3435, y: 280 },
-      { x: 3620, y: 440 }, { x: 3760, y: 440 }
+      { x: 3620, y: 440 }, { x: 3690, y: 440 }
     ],
     checkpoints: [{ x: 910, y: 490 }, { x: 1660, y: 490 },
                   { x: 2440, y: 490 }, { x: 3520, y: 490 }],

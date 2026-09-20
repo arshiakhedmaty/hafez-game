@@ -64,7 +64,8 @@ const Play = (() => {
       movers: (stage.movers || []).map(m => Object.assign({}, m, { px: m.x, py: m.y })),
       phantoms: (stage.phantoms || []).map(p => Object.assign({}, p, { lit: 0 })),
       crumbles: (stage.crumbles || []).map(p => Object.assign({}, p, { t: -1, gone: 0 })),
-      crates: (stage.crates || []).map(cr => Object.assign({}, cr, { vx: 0, vy: 0, grounded: false })),
+      crates: (stage.crates || []).map(cr => Object.assign({}, cr,
+        { vx: 0, vy: 0, grounded: false, homeX: cr.x, homeY: cr.y })),
       plates: (stage.plates || []).map(p => Object.assign({}, p, { on: false, wasOn: false })),
       gates: (stage.gates || []).map(g => Object.assign({}, g, { open: false, anim: 0 })),
       rings: (stage.rings || []).map(r => Object.assign({}, r)),
@@ -209,6 +210,11 @@ const Play = (() => {
     /* ---- integrate ---- */
     const wasGrounded = p.grounded;
     p.hitWall = null;
+    /* moveBody zeroes vx the moment he touches anything, and the crate is
+       a solid like any other - so by the time the crate asks how hard he
+       is pushing, the answer is always nought. Keep the velocity he was
+       carrying INTO the collision; that is the shove. */
+    p.driveVx = p.vx;
     moveBody(p, p.vx * dt, p.vy * dt, solids);
 
     /* landing feedback */
@@ -383,15 +389,60 @@ const Play = (() => {
       const solids = allSolids().filter(s => s !== cr);
       /* push detection */
       cr.vx = 0;
-      if (!A.down) {
-        const touching = A.y + A.h > cr.y + 4 && A.y < cr.y + cr.h - 4;
-        if (touching) {
-          if (A.vx > 20 && Math.abs(A.x + A.w - cr.x) < 8) { cr.vx = A.vx * 0.72; A.pushT = 0.12; }
-          if (A.vx < -20 && Math.abs(cr.x + cr.w - A.x) < 8) { cr.vx = A.vx * 0.72; A.pushT = 0.12; }
+      /* A crate is a solid, so the instant he touches one the collision
+         solver sets his speed to nothing - and the push used to be read
+         from that same, now empty, number. He was therefore shoving with
+         whatever single frame of acceleration he had managed since the
+         last collision, which measured 1px a second: shifting this crate
+         onto its plate took nearly three minutes of holding the key.
+
+         So the shove comes from what he is ASKING for, not from what the
+         wall left of it. He leans in, the crate goes at a good deal less
+         than his running speed, and he travels with it because it keeps
+         vacating the space in front of him. */
+      if (!A.down && A.grounded) {
+        const dir = Input.axis(1);
+        const touching = A.y + A.h > cr.y + 6 && A.y < cr.y + cr.h - 6;
+        const shove = TUNE.arshia.run * 0.62;
+        if (touching && dir > 0 && A.x + A.w <= cr.x + 8 && A.x + A.w > cr.x - 10) {
+          cr.vx = shove; A.pushT = 0.12;
+        } else if (touching && dir < 0 && cr.x + cr.w >= A.x - 8 && cr.x + cr.w < A.x + 10) {
+          cr.vx = -shove; A.pushT = 0.12;
         }
       }
       moveBody(cr, cr.vx * dt, cr.vy * dt, solids);
       if (cr.vx) FX.dust(cr.x + cr.w / 2, cr.y + cr.h, 1, -Math.sign(cr.vx));
+
+      /* ---- the two ways a crate can end a chapter ----
+
+         Off a ledge: the mine has one right beside its crate, and the
+         only thing heavy enough to hold a crate plate is that crate.
+
+         Wedged: a crate is only ever pushed, never pulled, so shifting
+         it LEFT needs him standing on its RIGHT. Hold right from the
+         spawn of chapter one and the crate sails over its plate and
+         stops flush against the shut door with exactly nought pixels
+         between them - no room to stand, so it can never be moved
+         again, and the door it was meant to open stays shut forever.
+         Either side blocked means the same thing: it cannot go one way
+         and he cannot get behind it to send it the other.
+
+         A crate doing its job on a plate is left well alone.          */
+      const room = x => {
+        const probe = { x, y: cr.y + 5, w: 23, h: cr.h - 10 };
+        return !solids.some(s => aabb(probe, s));
+      };
+      const working = S.plates.some(pl =>
+        aabb(cr, { x: pl.x, y: pl.y - 10, w: pl.w, h: 22 }));
+      const pinned = !working && (!room(cr.x - 24) || !room(cr.x + cr.w + 1));
+      cr.stuckT = pinned ? (cr.stuckT || 0) + dt : 0;
+
+      if (cr.y > S.def.deathY || cr.stuckT > 0.6) {
+        const why = cr.y > S.def.deathY ? 'BACK WHERE IT WAS' : 'THAT WAS STUCK FOR GOOD';
+        cr.x = cr.homeX; cr.y = cr.homeY; cr.vx = 0; cr.vy = 0; cr.stuckT = 0;
+        Snd.play('thud'); FX.dust(cr.x + cr.w / 2, cr.y + cr.h, 10, 0);
+        FX.say(cr.x + cr.w / 2, cr.y - 16, why, PAL.parch, 13);
+      }
     }
 
     /* ---- pressure plates ---- */

@@ -42,6 +42,7 @@ const Play = (() => {
       maxHearts, hearts: maxHearts, iframe: 0, down: false, downT: 0,
       rope: null, ropeLen: 0, reviveT: 0, stepT: 0,
       blinkSeed: who === 'rojina' ? 0.45 : 0, pushT: 0,
+      dance: 0, danceT: 0, danceName: 0,
       /* last patch of trustworthy ground - a fall returns them here, so a
          missed jump costs a heart and some time, never the run itself */
       safeX: x, safeY: y, safeT: 0
@@ -247,11 +248,27 @@ const Play = (() => {
       if (p.stepT <= 0) { p.stepT = 0.26; Snd.play('step'); FX.dust(cx(p), p.y + p.h, 2, -Math.sign(p.vx)); }
     }
 
+    /* ---- dancing ----
+       Anything that is actually playing the game cancels it: a step, a
+       jump, the rope, a crouch, getting hit, going down. You cannot
+       dance your way past a chasm.                                  */
+    if (p.dance) {
+      if (Input.axis(n) || Input.p(n, 'up') || Input.p(n, 'down') ||
+          Input.ph(n, 'act') || Input.p(n, 'kiss') ||
+          !p.grounded || p.rope || p.down || p.iframe > 0.9) {
+        p.dance = 0;
+      } else {
+        p.danceT += dt;
+        p.danceName = Math.max(0, p.danceName - dt);
+      }
+    }
+
     /* ---- animation selection ---- */
     if (p.rope) p.anim = 'swing';
     else if (!p.grounded) p.anim = p.vy < -30 ? 'jump' : 'fall';
     else if (p.pushT > 0) p.anim = 'push';
     else if (Math.abs(p.vx) > 26) p.anim = 'run';
+    else if (p.dance) p.anim = 'dance' + p.dance;
     else if (Input.p(n, 'down')) p.anim = 'crouch';
     else p.anim = 'idle';
     p.speed = clamp(Math.abs(p.vx) / T.run, 0, 1.4);
@@ -603,6 +620,33 @@ const Play = (() => {
     }
   }
 
+  /* ---------------- the dance floor ----------------
+     One key, both of them, different moves each. Pressing the same
+     number again stops it; pressing another one changes it. There is
+     nothing to win here - it is a game two people play sitting next to
+     each other, and sometimes they just want to make each other laugh. */
+  function readDanceKeys() {
+    for (let i = 0; i < DANCE_KEYS.length; i++) {
+      if (!Input.hit(DANCE_KEYS[i])) continue;
+      const n = i + 1;
+      const already = S.a.dance === n && S.r.dance === n;
+      [S.a, S.r].forEach(p => {
+        if (p.down) return;
+        p.dance = already ? 0 : n;
+        p.danceT = 0;
+        p.danceName = already ? 0 : 2.4;
+      });
+      Snd.play(already ? 'back' : 'gear');
+      if (!already) {
+        Snd.play('tick');
+        [S.a, S.r].forEach(p => {
+          if (!p.down) FX.hearts(cx(p), p.y + 6, 3, LOOK[p.who].accent);
+        });
+      }
+      break;
+    }
+  }
+
   /* ---------------- damage / down / revive ---------------- */
   function hurt(p, n, cause) {
     if (p.iframe > 0 || p.down) return;
@@ -737,6 +781,7 @@ const Play = (() => {
     }
 
     S.elapsed += dt;
+    readDanceKeys();
     const solids = allSolids();
     updatePlayer(S.a, 1, dt, solids);
     updatePlayer(S.r, 2, dt, solids);
@@ -842,6 +887,7 @@ const Play = (() => {
     drawActor(c, S.a);
     drawReviveRing(c, S.a, S.r);
     drawReviveRing(c, S.r, S.a);
+    drawDanceCall(c);
 
     c.restore();
 
@@ -859,7 +905,7 @@ const Play = (() => {
   function drawActor(c, p) {
     const blink = p.iframe > 0 && Math.floor(p.iframe * 14) % 2 === 0;
     drawChar(c, p.who, {
-      x: cx(p), y: p.y + p.h, face: p.face, anim: p.anim, t: p.t,
+      x: cx(p), y: p.y + p.h, face: p.face, anim: p.anim, t: p.dance ? p.danceT : p.t,
       expr: p.expr, scale: 1, speed: p.speed || 0, airT: p.airT,
       alpha: blink ? 0.35 : 1, blinkSeed: p.blinkSeed,
       tilt: p.rope ? p.swingTilt : 0,
@@ -1067,6 +1113,23 @@ const Play = (() => {
     c.closePath();
     ink(c, cp.hit ? PAL.teal : PAL.parchDk, 1.6);
     if (cp.hit) { c.save(); c.globalAlpha = 0.3; ell(c, 0, -26, 26, 30); c.fillStyle = PAL.teal; c.fill(); c.restore(); }
+    c.restore();
+  }
+
+  /* One number key starts both of them, so the name of it is called out
+     once, between them. Two labels thirty pixels apart were printed
+     straight across each other and across both name tags. */
+  function drawDanceCall(c) {
+    const n = S.a.dance || S.r.dance;
+    const show = Math.max(S.a.danceName, S.r.danceName);
+    if (!n || show <= 0) return;
+    const mid = (cx(S.a) + cx(S.r)) / 2;
+    const top = Math.min(overHead(S.a), overHead(S.r)) - 24;
+    c.save();
+    c.globalAlpha = clamp(show / 0.7, 0, 1);
+    txt(c, DANCES[n - 1], mid, top,
+        { size: 15, font: FONT.title, fill: PAL.gold,
+          stroke: PAL.ink, lw: 4.5, letter: 3 });
     c.restore();
   }
 

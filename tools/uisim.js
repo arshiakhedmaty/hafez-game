@@ -122,7 +122,7 @@ const FILES = GAME.filter(f => ['js/config.js', 'js/utils.js', 'js/audio.js'].in
 const src = read('js/config.js') + '\n;\n' + read('js/utils.js') + '\n;\n' + stubs
   + '\n;\n' + FILES.map(read).join('\n;\n')
   + '\n;\nreturn { CFG, STAGES, SECRET_IDX, secretEarned, secretProgress,'
-  + ' Play, Mini, Screens, Save, Game, Lvl, Input, DIFF, UIT };';
+  + ' Play, Mini, Screens, Save, Game, Lvl, Input, DIFF, UIT, DANCES, DANCE_KEYS, pose };';
 
 const API = new Function(
   'window', 'document', 'addEventListener', 'removeEventListener',
@@ -136,7 +136,7 @@ const API = new Function(
   env.innerWidth, env.innerHeight, env.devicePixelRatio);
 
 const { STAGES, SECRET_IDX, secretEarned, secretProgress,
-        Play, Mini, Screens, Save, Game, Lvl } = API;
+        Play, Mini, Screens, Save, Game, Lvl, DANCES, DANCE_KEYS, pose } = API;
 
 /* ---------------- the harness ---------------- */
 let pass = 0, fail = 0;
@@ -461,6 +461,124 @@ ok('the handler lives above every screen rather than inside a menu',
    /F11[\s\S]{0,200}toggleFullscreen\(\)/.test(bootSrc));
 ok('and it stops the browser doing its own thing on top',
    /F11[\s\S]{0,160}preventDefault/.test(bootSrc));
+
+group('the ten dances');
+{
+  /* A pose is a bundle of angles and offsets. Two dances are only
+     different if those numbers are different, and the point of the whole
+     feature is that all ten are different from each other AND that each
+     of them dances it differently - so that is what gets measured here,
+     rather than taking the word of the person who wrote them. */
+  const sample = (n, who) => {
+    const out = [];
+    for (let i = 0; i < 12; i++) {
+      const P = pose('dance' + n, i * 0.09, { speed: 1 }, who);
+      out.push(P.bob, P.headTilt, P.headX, P.lean, P.squash,
+               P.hipTilt, P.shTilt, P.hipShift,
+               P.armF.a, P.armF.b, P.armB.a, P.armB.b,
+               P.legF.k, P.legF.lift, P.legB.k, P.legB.lift,
+               P.turn === undefined ? 1 : P.turn);
+    }
+    return out;
+  };
+  const dist = (a, b) => {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) d += Math.abs(a[i] - b[i]);
+    return d / a.length;
+  };
+
+  ok('there are ten of them, on the ten number keys',
+     DANCES.length === 10 && DANCE_KEYS.length === 10);
+
+  let threw = null;
+  try { for (let n = 1; n <= 10; n++) { sample(n, 'arshia'); sample(n, 'rojina'); } }
+  catch (e) { threw = e.message; }
+  ok('every one of them solves for both of them without throwing', !threw, threw || '');
+
+  /* none of them may be a standing still */
+  let dullest = null, dullVal = 1e9;
+  for (let n = 1; n <= 10; n++) {
+    ['arshia', 'rojina'].forEach(who => {
+      const v = sample(n, who);
+      let lo = 1e9, hi = -1e9;
+      v.forEach(x => { lo = Math.min(lo, x); hi = Math.max(hi, x); });
+      if (hi - lo < dullVal) { dullVal = hi - lo; dullest = DANCES[n - 1] + ' / ' + who; }
+    });
+  }
+  ok('none of them is just standing there', dullVal > 0.4,
+     dullest + ' barely moves (' + dullVal.toFixed(2) + ')');
+
+  /* every pair of dances has to look like a different dance */
+  let closest = null, closeVal = 1e9;
+  for (let a = 1; a <= 10; a++)
+    for (let b = a + 1; b <= 10; b++)
+      ['arshia', 'rojina'].forEach(who => {
+        const d = dist(sample(a, who), sample(b, who));
+        if (d < closeVal) { closeVal = d; closest = DANCES[a-1] + ' vs ' + DANCES[b-1] + ' (' + who + ')'; }
+      });
+  ok('no two of them are the same dance', closeVal > 0.15,
+     closest + ' are only ' + closeVal.toFixed(3) + ' apart');
+
+  /* and he never does hers */
+  let same = null, sameVal = 1e9;
+  for (let n = 1; n <= 10; n++) {
+    const d = dist(sample(n, 'arshia'), sample(n, 'rojina'));
+    if (d < sameVal) { sameVal = d; same = DANCES[n - 1]; }
+  }
+  ok('and each of them dances it differently from the other', sameVal > 0.12,
+     same + ' is nearly identical for both (' + sameVal.toFixed(3) + ')');
+}
+
+group('dancing in a stage');
+{
+  boot('');
+  frames(4);
+  Game.startStage(0);
+  Play.state.state = 'play';
+  const S = Play.state;
+  frames(6);
+
+  key('Digit3');
+  frames(2);
+  ok('a number key starts both of them dancing',
+     S.a.dance === 3 && S.r.dance === 3, S.a.dance + '/' + S.r.dance);
+  ok('and the animation follows', S.a.anim === 'dance3' && S.r.anim === 'dance3');
+
+  key('Digit7');
+  frames(2);
+  ok('another number changes the dance', S.a.dance === 7 && S.r.dance === 7);
+
+  key('Digit7');
+  frames(2);
+  ok('the same number again stops it', S.a.dance === 0 && S.r.dance === 0);
+
+  /* moving has to cancel it - you cannot dance your way across a chasm */
+  key('Digit5'); frames(2);
+  ok('dancing again', S.a.dance === 5);
+  env.fire('keydown', { code: 'KeyD', key: 'KeyD', preventDefault() {} });
+  frames(4);
+  ok('a step cancels his', S.a.dance === 0);
+  ok('but not hers, she is standing still', S.r.dance === 5);
+  env.fire('keyup', { code: 'KeyD', key: 'KeyD', preventDefault() {} });
+  frames(2);
+
+  /* and a fall cancels it too */
+  key('Digit2'); frames(2);
+  S.r.y -= 60; S.r.vy = -200;
+  frames(6);
+  ok('leaving the ground cancels it', S.r.dance === 0);
+
+  /* nothing anywhere throws while a dance is running */
+  let threw = null;
+  try {
+    for (let n = 1; n <= 10; n++) {
+      key('Digit' + (n % 10));
+      for (let i = 0; i < 40; i++) { frames(1); }
+      Play.draw(Game.ctx);
+    }
+  } catch (e) { threw = e.message; }
+  ok('all ten run and draw inside a real stage', !threw, threw || '');
+}
 
 group('the page and the manifest agree');
 {

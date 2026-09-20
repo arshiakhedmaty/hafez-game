@@ -40,7 +40,10 @@ function drawChar(c, who, st) {
   if (anim === 'down') { drawDowned(c, who, L, t, st); c.restore(); return; }
 
   /* ---------- pose solver ---------- */
-  const P = pose(anim, t, st);
+  const P = pose(anim, t, st, who);
+  /* a body turning its back on you, in two dimensions: squeeze it flat
+     and out the other side, and everything it wears mirrors with it */
+  if (P.turn !== undefined) c.scale(P.turn, 1);
 
   /* body landmarks */
   const headTop = -H + P.bob,
@@ -276,7 +279,310 @@ function drawChar(c, who, st) {
      squash  - squash-and-stretch about the feet
      headTilt- deliberately lags the lean so the head trails the body
    Those three are what stop the poses reading as a mannequin.        */
-function pose(anim, t, st) {
+/* =====================================================================
+   THE DANCES
+
+   Ten of them, on the number keys, and each one is a different pose
+   solver for each of the two of them -- so pressing 4 puts him in a
+   stiff line-dance kick and her in a can-can, not the same animation
+   twice. What makes one dance read as a different dance from across a
+   room is the SILHOUETTE, so each one moves a different part of the
+   body: the hips, the whole torso turning, an arm over the head, a leg
+   in the air, the shoulders alone, the feet sliding, everything at right
+   angles, one arm up, both arms across, or the whole body folded over.
+
+   `turn` is how a two-dimensional body spins: scaling it horizontally
+   through zero and out the other side mirrors everything it is wearing,
+   which is exactly what happens when somebody turns their back on you.
+   ===================================================================== */
+function dancePose(n, who, t, P) {
+  const her = who === 'rojina';
+  const TAU = Math.PI * 2;
+
+  switch (n) {
+    /* ---- 1. TWO-STEP : the hips. Weight thrown side to side. ------- */
+    case 1: {
+      const w = t * (her ? 5.4 : 4.4);
+      const sway = Math.sin(w), step = Math.abs(Math.sin(w));
+      P.hipShift = sway * (her ? 3.8 : 3.0);
+      P.hipTilt = sway * (her ? 0.22 : 0.17);
+      P.shTilt = -sway * 0.17;
+      P.lean = sway * 0.09;
+      P.bob = -step * (her ? 2.6 : 2.0);
+      P.squash = -0.05 * step;
+      P.headTilt = -sway * 0.12;
+      P.headX = sway * 1.1;
+      if (her) {
+        /* hands on her hips, heels tapping */
+        P.armF = { a: 0.95, b: 1.55 }; P.armB = { a: 0.80, b: 1.58 };
+        P.legF = { k: sway * 0.42, lift: Math.max(0, sway) * 3.8 };
+        P.legB = { k: -sway * 0.42, lift: Math.max(0, -sway) * 3.8 };
+        P.wind = 1.5;
+      } else {
+        /* arms folded, boots stamping */
+        P.armF = { a: -0.90, b: 1.30 }; P.armB = { a: -0.80, b: 1.34 };
+        P.legF = { k: sway * 0.32, lift: Math.max(0, sway) * 4.4 };
+        P.legB = { k: -sway * 0.32, lift: Math.max(0, -sway) * 4.4 };
+        P.wind = 0.8;
+      }
+      break;
+    }
+
+    /* ---- 2. SPIN : the whole body turns right round. --------------- */
+    case 2: {
+      const w = t * (her ? 4.2 : 3.2);
+      const c = Math.cos(w);
+      /* Never anywhere near edge-on. At a tenth of a width he was a
+         three pixel sliver, which reads as the game breaking rather than
+         as somebody turning their back on you. A third of a width still
+         flips everything he wears at the crossing, which is the part
+         that sells it. */
+      P.turn = Math.sign(c || 1) * (0.34 + 0.66 * Math.abs(c));
+      P.bob = -Math.abs(Math.sin(w * 2)) * 1.2;
+      P.lean = Math.sin(w) * 0.07;
+      P.headTilt = Math.sin(w + 0.6) * 0.16;
+      P.wind = 2.2;
+      if (her) {
+        /* arms out, skirt flying */
+        P.armF = { a: -1.62, b: 0.10 }; P.armB = { a: -1.55, b: 0.12 };
+        P.legF = { k: 0.42, lift: 0.8 }; P.legB = { k: -0.30, lift: 0 };
+        P.squash = 0.05;
+        P.hipTilt = Math.sin(w) * 0.10;
+      } else {
+        /* one hand holding the hat on */
+        P.armF = { a: -2.50, b: 0.55 }; P.armB = { a: 0.55, b: 0.90 };
+        P.legF = { k: 0.30, lift: 0 }; P.legB = { k: -0.22, lift: 0.6 };
+        P.hipShift = Math.sin(w) * 1.0;
+      }
+      break;
+    }
+
+    /* ---- 3. TWIRL : an arm working over the head. ------------------ */
+    case 3: {
+      const w = t * (her ? 3.4 : 4.0);
+      P.bob = Math.sin(w * 2) * 0.8 - 0.4;
+      P.lean = Math.sin(w) * 0.10;
+      P.hipShift = -Math.sin(w) * 1.3;
+      P.headTilt = Math.sin(w) * 0.10 - 0.06;
+      P.wind = 1.4;
+      if (her) {
+        /* the lantern swung low through a figure of eight */
+        P.armF = { a: -0.55 + Math.sin(w) * 1.15, b: 0.22 };
+        P.armB = { a: 0.70, b: 1.30 };
+        P.shTilt = Math.sin(w) * 0.16;
+        P.hipTilt = -Math.sin(w) * 0.10;
+        P.legF = { k: 0.26, lift: 0 }; P.legB = { k: -0.20, lift: 0 };
+      } else {
+        /* the rope going round and round above his hat */
+        P.armF = { a: -2.62 + Math.sin(w) * 0.30, b: -0.34 + Math.cos(w) * 0.30 };
+        P.armB = { a: 0.60, b: 1.20 };
+        P.shTilt = -Math.sin(w) * 0.13;
+        P.legF = { k: 0.20 + Math.sin(w) * 0.12, lift: 0 };
+        P.legB = { k: -0.18, lift: 0 };
+      }
+      break;
+    }
+
+    /* ---- 4. KICK LINE : a leg in the air. -------------------------- */
+    case 4: {
+      const w = t * (her ? 4.6 : 3.8);
+      const s = Math.sin(w);
+      const kick = Math.max(0, s), kick2 = Math.max(0, -s);
+      P.lean = -0.10 - Math.abs(s) * (her ? 0.16 : 0.09);
+      P.bob = -Math.abs(s) * 0.8;
+      P.hipTilt = s * 0.13;
+      P.shTilt = -s * 0.08;
+      P.headTilt = -Math.abs(s) * 0.08;
+      if (her) {
+        /* a can-can: much higher, one hand holding her hem out */
+        P.legF = { k: -kick * 2.15, lift: kick * 5.6 };
+        P.legB = { k: kick2 * 1.05, lift: kick2 * 3.0 };
+        /* straight up rather than across - at -2.30 it came down over
+           her hat and covered her face on every second beat */
+        P.armF = { a: -2.80, b: -0.16 };
+        P.armB = { a: 0.95, b: 0.35 };
+        P.wind = 2.4;
+        P.squash = 0.05;
+      } else {
+        /* stiff and square, both arms straight out along the line */
+        P.legF = { k: -kick * 1.30, lift: kick * 3.6 };
+        P.legB = { k: kick2 * 0.75, lift: kick2 * 2.0 };
+        P.armF = { a: -1.57, b: 0 };
+        P.armB = { a: -1.57, b: 0 };
+        P.wind = 1.0;
+      }
+      break;
+    }
+
+    /* ---- 5. SHIMMY : the shoulders, and nothing else. -------------- */
+    case 5: {
+      const w = t * (her ? 17 : 13);
+      const q = Math.sin(w);
+      P.shTilt = q * (her ? 0.24 : 0.17);
+      P.hipTilt = -q * 0.05;
+      P.hipShift = q * 0.5;
+      P.bob = Math.abs(Math.sin(w * 0.5)) * -0.7;
+      P.lean = 0.03;
+      if (her) {
+        /* the whole torso in it, and her hair goes everywhere */
+        P.headTilt = -q * 0.16;
+        P.headX = q * 1.4;
+        P.armF = { a: -1.15, b: 0.95 }; P.armB = { a: -1.05, b: 1.00 };
+        P.wind = 2.6;
+        P.squash = q * 0.02;
+      } else {
+        /* shoulders only, arms hanging loose, feet planted */
+        P.headTilt = -q * 0.06;
+        P.armF = { a: 0.10 + q * 0.22, b: 0.18 };
+        P.armB = { a: -0.05 - q * 0.22, b: 0.16 };
+        P.wind = 1.2;
+      }
+      P.legF = { k: 0.06, lift: 0 }; P.legB = { k: -0.06, lift: 0 };
+      break;
+    }
+
+    /* ---- 6. SLIDE : the feet, going nowhere. ----------------------- */
+    case 6: {
+      const w = t * (her ? 2.6 : 2.2);
+      const g = Math.sin(w);
+      P.hipShift = g * 3.0;
+      P.lean = -0.14 - g * 0.06;
+      P.bob = -0.4 + Math.abs(g) * 0.5;
+      P.headTilt = g * 0.10 - 0.06;
+      P.headX = g * 1.6;
+      P.squash = -0.03;
+      if (her) {
+        /* up on her toes, one arm drawn along the line of the glide */
+        P.legF = { k: g * 1.35, lift: Math.max(0, g) * 1.2 };
+        P.legB = { k: -g * 0.55, lift: 0 };
+        P.armF = { a: -1.95 - g * 0.30, b: 0.16 };
+        P.armB = { a: 0.55, b: 0.55 };
+        P.shTilt = -g * 0.12;
+        P.wind = 1.8;
+      } else {
+        /* leaning back off the heel, arms trailing behind the slide */
+        P.legF = { k: g * 1.65, lift: 0 };
+        P.legB = { k: -g * 0.85, lift: Math.max(0, -g) * 1.4 };
+        P.armF = { a: -0.75 - g * 0.55, b: 0.30 };
+        P.armB = { a: -0.30 - g * 0.40, b: 0.36 };
+        P.shTilt = g * 0.10;
+        P.wind = 1.5;
+      }
+      break;
+    }
+
+    /* ---- 7. ROBOT : time itself goes in steps. --------------------- */
+    case 7: {
+      const rate = her ? 8 : 6;
+      const q = Math.floor(t * rate);            /* stepped, not smooth */
+      const a = (q % 4) / 4 * TAU;
+      const s = Math.sin(a), c2 = Math.cos(a);
+      P.bob = (q % 2 ? -1.1 : 0);
+      P.squash = (q % 2 ? 0.03 : -0.03);
+      P.headTilt = s * 0.20;
+      P.headX = c2 * 1.2;
+      P.shTilt = s * 0.10;
+      P.hipShift = c2 * 1.0;
+      P.lean = 0;
+      if (her) {
+        /* compact, quick, elbows tight in */
+        P.armF = { a: -1.57 * (q % 2), b: 1.57 };
+        P.armB = { a: -1.57 * ((q + 1) % 2), b: 1.57 };
+        P.wind = 0.2;
+      } else {
+        /* wide and square: everything at a right angle */
+        P.armF = { a: q % 2 ? -1.57 : 0, b: 1.57 };
+        P.armB = { a: q % 2 ? 0 : -1.57, b: 1.57 };
+        P.wind = 0.1;
+      }
+      P.legF = { k: (q % 2 ? 0.30 : 0), lift: 0 };
+      P.legB = { k: (q % 2 ? 0 : 0.30), lift: 0 };
+      break;
+    }
+
+    /* ---- 8. STAR POINT : one arm up, hip out the other way. -------- */
+    case 8: {
+      const w = t * (her ? 3.8 : 3.0);
+      const s = Math.sign(Math.sin(w)) || 1;
+      const punch = Math.abs(Math.sin(w * 2));
+      P.hipShift = -s * 2.2;
+      P.hipTilt = -s * 0.14;
+      P.shTilt = s * 0.12;
+      P.lean = s * 0.06;
+      P.bob = -punch * 1.0;
+      P.headTilt = s * 0.16;
+      if (her) {
+        /* one arm straight up, one thrown out to the side. Framing her
+           face put her own forearm across it on every other beat. */
+        P.armF = { a: -2.74 - punch * 0.16, b: -0.10 };
+        P.armB = { a: -1.30 + punch * 0.55, b: 0.30 };
+        P.wind = 1.6;
+      } else {
+        /* the full arm, up the diagonal, other hand on the belt */
+        P.armF = { a: -2.55 - punch * 0.30, b: -0.22 };
+        P.armB = { a: 0.85, b: 1.15 };
+        P.wind = 1.1;
+      }
+      P.legF = { k: 0.34, lift: 0 }; P.legB = { k: -0.26, lift: punch * 0.8 };
+      break;
+    }
+
+    /* ---- 9. SWING ARMS : both arms across, hips the other way. ----- */
+    case 9: {
+      const w = t * (her ? 7.0 : 5.2);
+      const s = Math.sin(w);
+      const amp = her ? 1.15 : 1.45;
+      P.armF = { a: -0.55 + s * amp, b: 0.55 };
+      P.armB = { a: -0.45 + s * amp, b: 0.60 };
+      /* the hips deliberately fight the arms, which is the whole joke */
+      P.hipShift = -s * (her ? 2.0 : 2.6);
+      P.hipTilt = -s * 0.15;
+      P.shTilt = s * 0.13;
+      P.lean = s * 0.05;
+      P.bob = -Math.abs(s) * 0.9;
+      P.headTilt = -s * 0.10;
+      P.headX = -s * 0.8;
+      P.legF = { k: -s * 0.22, lift: 0 };
+      P.legB = { k: s * 0.22, lift: 0 };
+      P.wind = her ? 1.9 : 1.2;
+      break;
+    }
+
+    /* ---- 10. TAKE A BOW : the whole body folded over. -------------- */
+    default: {
+      const w = t * 1.5;
+      const dip = (Math.sin(w) + 1) / 2;          /* 0 up, 1 all the way down */
+      if (her) {
+        /* a curtsy: one leg tucked behind, knees out, hem held wide */
+        P.bob = dip * 5.0;
+        P.squash = -dip * 0.14;
+        P.lean = dip * 0.10;
+        P.headTilt = dip * 0.30;
+        P.hipTilt = dip * 0.10;
+        P.legF = { k: dip * 0.75, lift: 0 };
+        P.legB = { k: -dip * 1.15, lift: dip * 1.2 };
+        P.armF = { a: 0.55 + dip * 0.65, b: 0.30 };
+        P.armB = { a: 0.45 + dip * 0.60, b: 0.28 };
+        P.wind = 0.6 + dip * 1.2;
+      } else {
+        /* the hat comes off and sweeps across him */
+        P.bob = dip * 2.0;
+        P.lean = dip * 0.95;                      /* folded at the waist */
+        P.headTilt = dip * 0.30;                  /* and the head goes with it */
+        P.squash = -dip * 0.05;
+        P.armF = { a: -0.30 - dip * 1.15, b: 0.20 + dip * 0.30 };
+        P.armB = { a: 0.35 + dip * 0.75, b: 0.95 };
+        P.legF = { k: dip * 0.30, lift: 0 };
+        P.legB = { k: -dip * 0.45, lift: 0 };
+        P.wind = 0.5 + dip * 1.6;
+      }
+      break;
+    }
+  }
+  return P;
+}
+
+function pose(anim, t, st, who) {
   const P = { bob: 0, headTilt: 0, headX: 0, wind: 0, lean: 0, squash: 0,
               /* contrapposto: the pelvis tips one way and the shoulder
                  girdle answers the other. Without this every pose reads
@@ -285,6 +591,11 @@ function pose(anim, t, st) {
               armF: { a: 0.15, b: 0.1 }, armB: { a: -0.15, b: 0.1 },
               legF: { k: 0, lift: 0 }, legB: { k: 0, lift: 0 } };
   const spd = st.speed === undefined ? 1 : st.speed;
+
+  /* the number keys: dance1 .. dance10, a different solver each, and a
+     different one again for each of the two of them */
+  if (anim.length > 5 && anim.slice(0, 5) === 'dance')
+    return dancePose(parseInt(anim.slice(5), 10) || 1, who, t, P);
 
   switch (anim) {
     case 'run': {

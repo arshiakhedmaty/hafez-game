@@ -379,9 +379,12 @@ Screens.howto = {
 
     if (this.page === 0) this.controls(c); else this.rules(c);
 
-    if (this.page === 0)
+    if (this.page === 0) {
       txt(c, 'ONE LAPTOP  ·  ONE KEYBOARD  ·  BOTH OF YOU AT THE SAME TIME',
-          CFG.W / 2, CFG.H - 78, { size: 13, font: FONT.ui, fill: PAL.gold, letter: 2 });
+          CFG.W / 2, CFG.H - 92, { size: 13, font: FONT.ui, fill: PAL.gold, letter: 2 });
+      txt(c, '1 … 0  ·  TEN DANCES, AND EACH OF THEM DANCES IT DIFFERENTLY',
+          CFG.W / 2, CFG.H - 72, { size: 13, font: FONT.ui, fill: LOOK.rojina.accent, letter: 2 });
+    }
     txt(c, this.page === 0 ? 'CONTROLS  ( 1 / 2 )' : 'THE RULES  ( 2 / 2 )',
         CFG.W / 2, CFG.H - 52, { size: 14, font: FONT.ui, fill: PAL.gold, letter: 2 });
     Chrome.footer(c, 'LEFT / RIGHT to turn the page  ·  ESC to go back');

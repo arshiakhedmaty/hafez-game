@@ -56,6 +56,16 @@ const PAL = {
    hairStyle : 'curlyShort' | 'curlyLong' | 'swept' | 'long'
    eyeShape  : 'sharp' | 'round' | 'soft'
    ===================================================================== */
+/* The number keys, in order. Each one is a different dance, and each
+   dance is a different set of moves for each of them - see dancePose
+   in js/art.js. The names are what the game calls out over their heads. */
+const DANCES = [
+  'TWO-STEP', 'SPIN', 'TWIRL', 'KICK LINE', 'SHIMMY',
+  'SLIDE', 'ROBOT', 'STAR POINT', 'SWING ARMS', 'TAKE A BOW'
+];
+const DANCE_KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5',
+                    'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
+
 const LOOK = {
   /* ---------------- ARSHIA -------------------------------------------
      Reference: thick dark-brown curls with real volume, falling to the

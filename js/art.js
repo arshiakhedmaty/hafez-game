@@ -1247,6 +1247,40 @@ function drawPortrait(c, who, x, y, size, expr, t) {
   c.quadraticCurveTo(9, headRy * 1.35, 13, headRy * 2.6);
   c.closePath();
   ink(c, who === 'rojina' ? L.dress : L.vest, 2);
+
+  /* Something inside the coat. Her ringlets fall over her shoulders and
+     fill them; his were a plain tan dome with nothing in it at all,
+     which is what the results poster and the records page were showing
+     at 60px across. */
+  const sy = headRy * 1.30, hem = headRy * 2.6;
+  c.beginPath();
+  c.moveTo(-6, sy);
+  c.lineTo(0, headRy * 2.05);
+  c.lineTo(6, sy);
+  c.closePath();
+  ink(c, who === 'rojina' ? L.collar : L.shirt, 1.4);
+  if (who === 'arshia') {
+    /* the red cape, thrown back over one shoulder */
+    c.beginPath();
+    c.moveTo(-8.5, sy + 1);
+    c.quadraticCurveTo(-14.5, headRy * 1.9, -13, hem);
+    c.lineTo(-5.5, hem);
+    c.quadraticCurveTo(-7.5, headRy * 1.8, -6, sy + 1);
+    c.closePath();
+    ink(c, L.cape, 1.5, L.capeDark);
+    /* and the bandana at his throat */
+    c.beginPath();
+    c.moveTo(-5.5, sy - 0.5); c.lineTo(0, headRy * 1.62); c.lineTo(5.5, sy - 0.5);
+    c.lineWidth = 1.3; c.strokeStyle = L.bandana; c.stroke();
+  } else {
+    /* the black heart on its cord */
+    c.beginPath();
+    c.moveTo(-3.4, sy + 0.4);
+    c.quadraticCurveTo(0, headRy * 1.55, 3.4, sy + 0.4);
+    c.lineWidth = 0.9; c.strokeStyle = L.pendantCord; c.stroke();
+    drawHeart(c, 0, headRy * 1.68, 1.5, L.pendant);
+  }
+
   if (L.hairStyle === 'long') {
     poly(c, [[-headRx, -headRy * 0.3], [-headRx * 1.7, headRy * 1.4], [-headRx * 1.3, headRy * 2.6],
              [headRx * 1.3, headRy * 2.6], [headRx * 1.7, headRy * 1.4], [headRx, -headRy * 0.3]]);

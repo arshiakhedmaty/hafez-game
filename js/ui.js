@@ -711,7 +711,9 @@ Screens.ending = {
     if (this.t > 3) {
       const b = (Math.sin(UIT * 3) + 1) / 2;
       c.save(); c.globalAlpha = 0.4 + b * 0.6;
-      txt(c, 'PRESS ENTER', CFG.W / 2, CFG.H - 140,
+      /* down on the road, not across their chests - they walk right into
+         the middle of the screen as this appears */
+      txt(c, 'PRESS ENTER', CFG.W / 2, CFG.H - 40,
           { size: 20, font: FONT.title, fill: PAL.gold, stroke: PAL.ink, lw: 5, letter: 3 });
       c.restore();
     }

@@ -123,6 +123,17 @@ function drawChar(c, who, st) {
      and out the other side, and everything it wears mirrors with it */
   if (P.turn !== undefined) c.scale(P.turn, 1);
   if (st.land) { P.squash -= st.land * 0.17; P.bob += st.land * 2.2; }
+  /* the push-off: for the first few frames of a jump the body is still
+     crouched and the arms still swinging back. Purely drawn - the jump
+     itself left the ground on the frame the key went down.            */
+  if (st.takeoff) {
+    const k = st.takeoff;
+    P.squash = lerp(P.squash, -0.15, k); P.bob += 2.4 * k;
+    P.legF = { k: lerp(P.legF.k, 0.75, k), lift: lerp(P.legF.lift, 0, k) };
+    P.legB = { k: lerp(P.legB.k, -0.75, k), lift: lerp(P.legB.lift, 0, k) };
+    P.armF = { a: lerp(P.armF.a, -0.75, k), b: lerp(P.armF.b, 0.45, k) };
+    P.armB = { a: lerp(P.armB.a, -0.95, k), b: lerp(P.armB.b, 0.40, k) };
+  }
   const sec = settle(st.key || who, st, P.wind);
   P.wind = sec.w; P.lift = sec.l;
 
@@ -135,6 +146,34 @@ function drawChar(c, who, st) {
   const shY = -H * 0.635 + P.bob;
   const hipY = -H * 0.375 + P.bob * 0.6;
   const shW = 7.6 * L.build, hipW = 5.6 * L.build;
+
+  /* hands that go somewhere on purpose: to the other one's hand, to the
+     hat brim, behind an ear. Targets are in body space, measured from
+     the feet; the arm is solved to reach them and blended in by k.     */
+  let propSide = 1;
+  if (st.hold && st.hold.k > 0) {
+    const front = st.hold.x >= 0;
+    reachArm(front ? P.armF : P.armB, (front ? 1 : -1) * shW * 0.78, shY,
+             st.hold.x - P.hipShift, st.hold.y, st.hold.k, 'low');
+    if (front) propSide = -1;             /* the lantern changes hands */
+  }
+  if (st.fidget && anim === 'idle') {
+    const f = st.fidget, p = f.p;
+    const e = smooth01(p / 0.22) * (1 - smooth01((p - 0.78) / 0.22));
+    if (who === 'arshia') {
+      /* a thumb and finger to the brim, a small tug, a nod */
+      const tug = Math.sin(p * Math.PI * 6) * 0.9 * e;
+      reachArm(P.armF, shW * 0.78, shY, 6.5, -H * 0.915 + P.bob + tug, e, 'front');
+      P.headTilt += 0.09 * e;
+    } else {
+      /* fingers to the temple, then drawn back past the ear */
+      const slide = smooth01((p - 0.3) / 0.4);
+      reachArm(P.armF, shW * 0.78, shY, -0.5 - slide * 5,
+               -H * 0.83 + P.bob - slide * 1.5, e, 'front');
+      P.headTilt -= 0.12 * e;
+      propSide = -1;
+    }
+  }
 
   /* squash-and-stretch about the feet */
   if (P.squash) c.scale(1 / (1 + P.squash), 1 + P.squash);
@@ -219,7 +258,7 @@ function drawChar(c, who, st) {
 
   /* back arm */
   leanOn();
-  drawArm(c, L, shY, -shW * 0.78, P.armB, -1, st, who);
+  drawArm(c, L, shY, -shW * 0.78, P.armB, -1, st, who, propSide);
   leanOff();
 
   /* back leg, hung off the tipped pelvis */
@@ -405,7 +444,7 @@ function drawChar(c, who, st) {
   }
 
   /* front arm last (in front of torso) */
-  drawArm(c, L, shY, shW * 0.78, P.armF, 1, st, who);
+  drawArm(c, L, shY, shW * 0.78, P.armF, 1, st, who, propSide);
   leanOff();   /* head + front arm group ends */
 
   c.restore();
@@ -973,7 +1012,7 @@ function drawLeg(c, L, hipY, ox, leg, side, H) {
   c.restore();
 }
 
-function drawArm(c, L, shY, ox, arm, side, st, who) {
+function drawArm(c, L, shY, ox, arm, side, st, who, propSide) {
   const upper = 7.2, fore = 6.6;
   const a = arm.a, b = arm.b;
   const ex = ox + Math.sin(a) * upper;
@@ -1015,8 +1054,38 @@ function drawArm(c, L, shY, ox, arm, side, st, who) {
   c.restore();
   c.restore();
 
-  /* held props go in the forward hand */
-  if (side === 1 && st && st.prop) drawProp(c, st.prop, hx, hy, a + b, L, st);
+  /* held props go in the forward hand, unless that one is busy */
+  if (side === (propSide || 1) && st && st.prop) drawProp(c, st.prop, hx, hy, a + b, L, st);
+}
+
+const smooth01 = v => { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
+
+/* Two-bone reach: bend the arm so the hand lands on (tx, ty), or as near
+   as the arm allows. Of the two elbows that do it, 'low' keeps the one
+   hanging lower (a held hand) and 'front' the one out in front (a hand
+   raised to the face). k blends from the pose's own arm to the reach. */
+function reachArm(arm, ox, shY, tx, ty, k, pick) {
+  const u = 7.2, f = 6.6;
+  const dx = tx - ox, dy = ty - shY;
+  const D = clamp(Math.hypot(dx, dy), Math.abs(u - f) + 0.5, u + f - 0.25);
+  const phi = Math.atan2(dx, dy);
+  const al = Math.acos(clamp((u * u + D * D - f * f) / (2 * u * D), -1, 1));
+  const hx = ox + Math.sin(phi) * D, hy = shY + Math.cos(phi) * D;
+  let best = null;
+  for (const sg of [1, -1]) {
+    const a = phi + sg * al;
+    const ex = ox + Math.sin(a) * u, ey = shY + Math.cos(a) * u;
+    let b = Math.atan2(hx - ex, hy - ey) - a;
+    while (b > Math.PI) b -= Math.PI * 2;
+    while (b < -Math.PI) b += Math.PI * 2;
+    const score = pick === 'front' ? ex : ey;
+    if (!best || score > best.score) best = { a, b, score };
+  }
+  let a0 = arm.a;
+  while (best.a - a0 > Math.PI) a0 += Math.PI * 2;
+  while (best.a - a0 < -Math.PI) a0 -= Math.PI * 2;
+  arm.a = lerp(a0, best.a, k);
+  arm.b = lerp(arm.b, best.b, k);
 }
 
 function drawProp(c, prop, x, y, ang, L, st) {

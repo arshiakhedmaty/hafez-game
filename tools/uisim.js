@@ -122,7 +122,7 @@ const FILES = GAME.filter(f => ['js/config.js', 'js/utils.js', 'js/audio.js'].in
 const src = read('js/config.js') + '\n;\n' + read('js/utils.js') + '\n;\n' + stubs
   + '\n;\n' + FILES.map(read).join('\n;\n')
   + '\n;\nreturn { CFG, STAGES, SECRET_IDX, secretEarned, secretProgress,'
-  + ' Play, Mini, Screens, Save, Game, Lvl, Input, DIFF, UIT, DANCES, DANCE_KEYS, pose };';
+  + ' Play, Mini, Screens, Save, Game, Lvl, Input, DIFF, UIT, DANCES, DANCE_KEYS, pose, Talk, TALK };';
 
 const API = new Function(
   'window', 'document', 'addEventListener', 'removeEventListener',
@@ -136,7 +136,7 @@ const API = new Function(
   env.innerWidth, env.innerHeight, env.devicePixelRatio);
 
 const { STAGES, SECRET_IDX, secretEarned, secretProgress,
-        Play, Mini, Screens, Save, Game, Lvl, DANCES, DANCE_KEYS, pose } = API;
+        Play, Mini, Screens, Save, Game, Lvl, DANCES, DANCE_KEYS, pose, Talk, TALK } = API;
 
 /* ---------------- the harness ---------------- */
 let pass = 0, fail = 0;
@@ -273,6 +273,31 @@ key('Enter'); frames(4);
 ok('choosing one jumps straight into it and drops the pause',
    Game.debug().stageIdx === 5 && Game.debug().paused === false,
    JSON.stringify(Game.debug()));
+
+group('a word between them before a chapter');
+Game.goto('chapters');
+Screens.chapters.sel = 2;
+key('Enter'); frames(4);
+ok('a chapter picked from the menu opens on the talk card',
+   Game.debug().mode === 'play' && Talk.on, JSON.stringify(Game.debug()));
+ok('every chapter has something to say',
+   STAGES.every(st => (TALK[st.id] || []).length >= 2),
+   STAGES.filter(st => !(TALK[st.id] || []).length).map(st => st.id).join());
+const frozen = Play.state.stateT;
+frames(30);
+ok('the stage waits underneath it', Play.state.stateT === frozen);
+const lines = TALK[STAGES[2].id].length;
+key('Enter');
+ok('ENTER finishes the line before moving on', Talk.on && Talk.i === 0);
+key('Enter');
+ok('and then moves on', Talk.on && Talk.i === 1);
+key('Escape');
+ok('ESC skips the rest instead of pausing',
+   !Talk.on && Game.debug().paused === false, 'lines ' + lines);
+frames(10);
+ok('and the stage carries on', Play.state.stateT > frozen);
+Game.startStage(2);
+ok('a restart goes straight back in, no talk', !Talk.on);
 
 group('the share code');
 const L = Lvl.blank();

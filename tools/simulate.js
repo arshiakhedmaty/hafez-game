@@ -348,6 +348,29 @@ console.log('\nAND IT CANNOT BE LOST DOWN A HOLE');
 }
 
 /* ==================================================================== */
+section('HOLDING HANDS, THE HAT, THE PUSH-OFF');
+{
+  const S = startStage('gulch');
+  S.a.x = 300; S.a.y = 428; S.r.x = 326; S.r.y = 430;
+  S.a.vx = S.r.vx = 0;
+  step(120);
+  check('standing still side by side, they take hold', S.holdK > 0.95, 'k=' + S.holdK.toFixed(2));
+  held.add('KeyD'); step(30); release('KeyD'); step(4);
+  check('a step lets go', S.holdK < 0.3, 'k=' + S.holdK.toFixed(2));
+  S.r.x = S.a.x + 200; step(120 * 8);
+  check('left standing alone, the hat gets fixed sooner or later',
+        S.a.fidgetT > 0 || S.a.nextFidget > 3, 'idle ' + S.a.idleT.toFixed(1));
+  /* the drawn crouch at takeoff must not hold the jump back a frame */
+  S.a.vx = 0; S.a.vy = 0; step(10);
+  const y0 = S.a.y;
+  tap('KeyW'); Play.update(DT); pressed.clear();
+  check('the jump leaves the ground on the frame the key goes down',
+        S.a.y < y0 && S.a.vy < 0 && S.a.takeT > 0, 'dy=' + (S.a.y - y0).toFixed(2));
+  release('KeyW');
+  clearKeys();
+}
+
+/* ==================================================================== */
 console.log('\n--------------------------------------------');
 console.log(fail ? pass + ' passed, ' + fail + ' FAILED' : 'all ' + pass + ' checks passed');
 process.exit(fail ? 1 : 0);

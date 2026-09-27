@@ -39,9 +39,13 @@ const Game = (() => {
     if (s && s.enter) s.enter();
   }
 
-  function startStage(i) {
+  /* talk: whether the two of them get a word in first. Only a chapter
+     walked into from the menus does - never a retry, a restart, or the
+     next leg of a speedrun, where the clock is the only thing talking. */
+  function startStage(i, talk) {
     stageIdx = clamp(i, 0, STAGES.length - 1);
     const st = STAGES[stageIdx];
+    if (talk && !Run.on) Talk.start(st.id); else Talk.stop();
     const opts = { difficulty: Save.data.difficulty };
     Snd.music(st.music);
     if (st.kind === 'platform') { Play.start(st, opts); mode = 'play'; }
@@ -54,7 +58,7 @@ const Game = (() => {
     customBack = back || 'main';
     Snd.music('gulch');
     Play.start(customDef, { difficulty: Save.data.difficulty });
-    mode = 'play'; stageIdx = -1; paused = false;
+    mode = 'play'; stageIdx = -1; paused = false; Talk.stop();
   }
 
   function startRun() {
@@ -108,14 +112,14 @@ const Game = (() => {
   /* ---------------- screen routing ---------------- */
   function routeScreen(next) {
     if (!next) return;
-    if (next === 'startNew') { Save.data.unlocked = Math.max(1, Save.data.unlocked); Save.save(); startStage(0); return; }
-    if (next === 'continue') { startStage(Save.data.unlocked - 1); return; }
-    if (next.startsWith('startAt:')) { startStage(parseInt(next.slice(8), 10)); return; }
+    if (next === 'startNew') { Save.data.unlocked = Math.max(1, Save.data.unlocked); Save.save(); startStage(0, true); return; }
+    if (next === 'continue') { startStage(Save.data.unlocked - 1, true); return; }
+    if (next.startsWith('startAt:')) { startStage(parseInt(next.slice(8), 10), true); return; }
     if (next === 'runStart') { startRun(); return; }
     if (next === 'test') { startCustom(Screens.editor.level, 'editor'); return; }
     if (next === 'next') {
       if (stageIdx + 1 >= SECRET_IDX) { goto('chapters'); return; }
-      startStage(stageIdx + 1); return;
+      startStage(stageIdx + 1, true); return;
     }
     if (next === 'retry') {
       if (stageIdx < 0) { startCustom(Screens.editor.level, customBack); return; }
@@ -157,6 +161,15 @@ const Game = (() => {
       routeScreen(next);
     } else {
       /* ---- in a stage ---- */
+      if (Talk.on && !paused) {
+        /* the stage holds still under the card; ESC here skips the talk
+           rather than pausing a game that has not started yet */
+        Talk.update(dt);
+        (mode === 'play' ? Play : Mini).draw(c);
+        Talk.draw(c);
+        Input.endFrame();
+        return;
+      }
       if (Input.hit('Escape')) {
         paused = !paused;
         Snd.play(paused ? 'back' : 'click');

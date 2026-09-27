@@ -30,6 +30,9 @@ const Play = (() => {
   const KISS_RANGE = 46;
   const KISS_TIME = 1.15;
   const LEASH = 540;          /* how far apart they may drift */
+  const HOLD_RANGE = 40;      /* standing this close, their hands find each other */
+  const FIDGET_TIME = 1.5;    /* the hat, the hair */
+  const TAKEOFF = 0.09;       /* the drawn push-off at the start of a jump */
 
   let S = null;               /* live stage state */
 
@@ -43,6 +46,9 @@ const Play = (() => {
       rope: null, ropeLen: 0, reviveT: 0, stepT: 0,
       blinkSeed: who === 'rojina' ? 0.45 : 0, pushT: 0,
       dance: 0, danceT: 0, danceName: 0,
+      /* standing about: after a while the hat gets fixed, the hair gets
+         tucked. Staggered so the two of them never do it in unison.   */
+      idleT: 0, fidgetT: 0, nextFidget: who === 'rojina' ? 2.5 : 0, takeT: 0,
       /* last patch of trustworthy ground - a fall returns them here, so a
          missed jump costs a heart and some time, never the run itself */
       safeX: x, safeY: y, safeT: 0
@@ -83,7 +89,7 @@ const Play = (() => {
       coinsGot: 0, deaths: 0, revives: 0,
       difficulty: opts.difficulty,
       tumble: { x: 0, y: 0, r: 0, rot: 0, on: false, wait: rnd(6, 2) },
-      done: false, result: null, hintT: 0
+      done: false, result: null, hintT: 0, holdK: 0
     };
     S.cam.x = S.cam.tx = clamp(cx(S.a) - CFG.W / 2, 0, stage.w - CFG.W);
     S.cam.y = S.cam.ty = 0;
@@ -188,7 +194,7 @@ const Play = (() => {
       if (p.coyote > 0 || p.rope) {
         p.vy = -T.jump; p.buf = 0; p.coyote = 0; p.jumps = 1;
         p.jumpGrace = 0.11;
-        if (p.rope) { p.rope = null; }
+        if (p.rope) { p.rope = null; } else p.takeT = TAKEOFF;
         Snd.play('jump'); FX.dust(cx(p), p.y + p.h, 7, -p.face);
       } else if (T.dbl && p.jumps < 2) {
         /* full strength: the second jump has to actually clear the ledges
@@ -276,6 +282,15 @@ const Play = (() => {
     p.speed = clamp(Math.abs(p.vx) / T.run, 0, 1.4);
     p.pushT = Math.max(0, p.pushT - dt);
     p.landT = Math.max(0, (p.landT || 0) - dt);
+    p.takeT = Math.max(0, p.takeT - dt);
+
+    /* the idle clock: holding hands is its own thing to be doing */
+    if (p.anim === 'idle' && !(S.holdK > 0.05)) p.idleT += dt;
+    else { p.idleT = 0; p.fidgetT = 0; }
+    if (p.fidgetT > 0) p.fidgetT = Math.max(0, p.fidgetT - dt);
+    else if (p.idleT > 6 && (p.nextFidget -= dt) <= 0) {
+      p.fidgetT = FIDGET_TIME; p.nextFidget = rnd(7, 4);
+    }
 
     /* expression reacts to the situation */
     if (p.hearts <= 1) p.expr = 'scared';
@@ -789,9 +804,36 @@ const Play = (() => {
     updatePlayer(S.a, 1, dt, solids);
     updatePlayer(S.r, 2, dt, solids);
     updateWorld(dt);
+    updateHold(dt);
     updateCam(dt);
     FX.update(dt);
     return null;
+  }
+
+  /* Both standing still, side by side on the same footing: they hold
+     hands. Anything else - a step, a jump, a dance, a crouch, the rope -
+     lets go, and letting go is quicker than taking hold.             */
+  function holdOK() {
+    const A = S.a, R = S.r;
+    const dx = Math.abs(cx(R) - cx(A));
+    return A.anim === 'idle' && R.anim === 'idle' && A.grounded && R.grounded &&
+           dx > 8 && dx < HOLD_RANGE && Math.abs((A.y + A.h) - (R.y + R.h)) < 4;
+  }
+  function updateHold(dt) {
+    const on = holdOK();
+    S.holdK = approach(S.holdK || 0, on ? 1 : 0, dt * (on ? 4 : 10));
+  }
+  /* the one point in the world both hands reach for: between them, a
+     little higher the further apart they stand */
+  function holdFor(p) {
+    if (!(S.holdK > 0) || p.anim !== 'idle') return null;
+    const A = S.a, R = S.r;
+    const gap = Math.abs(cx(R) - cx(A));
+    const mx = (cx(A) + cx(R)) / 2;
+    const gy = (A.y + A.h + R.y + R.h) / 2;
+    const H = (LOOK.arshia.height + LOOK.rojina.height) / 2;
+    const hy = gy - H * lerp(0.40, 0.50, clamp((gap - 16) / 22, 0, 1));
+    return { x: (mx - cx(p)) * p.face, y: hy - (p.y + p.h), k: S.holdK };
   }
 
   /* =============================== DRAW =========================== */
@@ -919,6 +961,9 @@ const Play = (() => {
       swing: p.rope ? clamp(Math.abs(p.swingSpeed) / 420, 0, 1.6) : 0,
       closeness: p.closeness || 0,
       look, land: p.landT > 0 ? (p.landT / 0.16) * p.landK : 0,
+      takeoff: p.takeT > 0 && !p.rope ? p.takeT / TAKEOFF : 0,
+      hold: holdFor(p),
+      fidget: p.fidgetT > 0 ? { p: 1 - p.fidgetT / FIDGET_TIME } : null,
       prop: p.who === 'rojina' ? 'lantern' : null
     });
     /* name tag, so it is always obvious who is who */

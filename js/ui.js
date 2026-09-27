@@ -956,3 +956,109 @@ Screens.desktop = {
     c.restore();
   }
 };
+
+/* =====================================================================
+   TALK  --  a few words between the two of them before each chapter.
+   A card along the bottom of the screen with whoever is talking in
+   the corner, typed out a letter at a time. ENTER finishes the line or
+   moves on, ESC skips the lot. The stage waits underneath, frozen, so
+   nobody loses a heart to the posse while they are reading.
+   ===================================================================== */
+const TALK = {
+  gulch: [
+    ['rojina', 'Posse\'s an hour behind us, cowboy. You bring the rope?'],
+    ['arshia', 'Rope, hat, and you. Everything I need.'],
+    ['rojina', 'Then keep up. I\'ll light the way.']
+  ],
+  duel: [
+    ['arshia', 'Kade\'s out on the main street. Stay behind the trough.'],
+    ['rojina', 'Not a chance. We walk out there together.'],
+    ['arshia', 'Together, then. On the word.']
+  ],
+  mine: [
+    ['rojina', 'It\'s darker than a coal cellar down there.'],
+    ['arshia', 'That\'s why I\'m bringing the brightest thing in the territory.'],
+    ['rojina', 'Sweet talk won\'t light a single lamp, Arshia.']
+  ],
+  vault: [
+    ['arshia', 'Our fare out of the territory is sitting in that safe.'],
+    ['rojina', 'I listen for the tumblers. You turn the dial. Slow.']
+  ],
+  canyon: [
+    ['rojina', 'Arshia... the wall is coming down behind us.'],
+    ['arshia', 'Then we don\'t look back. Stay close and run.']
+  ],
+  ride: [
+    ['arshia', 'One horse, two riders. Hold on tight, Rojina.'],
+    ['rojina', 'I\'ve been holding on since the day we met.']
+  ],
+  sunset: [
+    ['rojina', 'One more ridge, and it\'s just us and the border.'],
+    ['arshia', 'And a little house with a porch facing west.'],
+    ['rojina', 'You promised me that porch. I\'m holding you to it.']
+  ],
+  ghost: [
+    ['arshia', 'This road ain\'t on any map I ever saw.'],
+    ['rojina', 'Good. Then nobody can follow us here.']
+  ]
+};
+
+const Talk = {
+  lines: null, i: 0, t: 0,
+  get on() { return !!this.lines; },
+  start(id) {
+    const l = TALK[id];
+    this.lines = l && l.length ? l : null;
+    this.i = 0; this.t = 0;
+  },
+  stop() { this.lines = null; },
+  /* characters of the current line that are showing */
+  shown() { return Math.floor(this.t * 46); },
+  update(dt) {
+    if (!this.lines) return;
+    this.t += dt;
+    if (Input.hit('Escape')) { Snd.play('back'); this.stop(); return; }
+    if (Input.hit('Enter') || Input.hit('Space') || Input.hit('NumpadEnter')) {
+      const line = this.lines[this.i][1];
+      if (this.shown() < line.length) { this.t = line.length / 46 + 0.01; return; }
+      Snd.play('click');
+      this.i++; this.t = 0;
+      if (this.i >= this.lines.length) this.stop();
+    }
+  },
+  draw(c) {
+    if (!this.lines) return;
+    const [who, line] = this.lines[this.i];
+    const L = LOOK[who];
+    const left = who === 'arshia';
+    const k = clamp(this.t / 0.18, 0, 1);
+    const x0 = 70, w = CFG.W - 140, h = 128, y0 = CFG.H - h - 30 + (1 - k) * 10;
+    c.save();
+    /* the stage behind goes quiet */
+    c.fillStyle = 'rgba(22,13,28,0.35)'; c.fillRect(0, 0, CFG.W, CFG.H);
+    rr(c, x0, y0, w, h, 8);
+    c.fillStyle = 'rgba(22,13,28,0.86)'; c.fill();
+    c.lineWidth = 2.5; c.strokeStyle = L.accent; c.stroke();
+    /* the speaker, cut off by the card like a photograph in a frame */
+    c.save();
+    rr(c, x0, y0, w, h, 8); c.clip();
+    const px = left ? x0 + 74 : x0 + w - 74;
+    c.fillStyle = 'rgba(239,220,176,0.08)';
+    c.fillRect(left ? x0 : x0 + w - 148, y0, 148, h);
+    drawPortrait(c, who, px, y0 + 58, 56, who === 'rojina' ? 'happy' : 'normal',
+                 UIT + (who === 'rojina' ? 0.7 : 0));
+    c.restore();
+
+    const tx = left ? x0 + 172 : x0 + 28;
+    txt(c, L.name, tx, y0 + 30,
+        { size: 18, font: FONT.title, fill: L.accent, stroke: PAL.ink, lw: 4, align: 'left', letter: 2 });
+    txt(c, line.slice(0, this.shown()), tx, y0 + 66,
+        { size: 17, font: FONT.ui, fill: PAL.parch, align: 'left' });
+    const done = this.shown() >= line.length;
+    c.globalAlpha = done ? 0.55 + 0.45 * Math.sin(UIT * 5) : 0.4;
+    txt(c, (this.i + 1) + ' / ' + this.lines.length + '     ENTER next   ·   ESC skip',
+        left ? x0 + w - 24 : x0 + w - 172, y0 + h - 20,
+        { size: 11, font: FONT.ui, fill: PAL.parchDk, align: 'right', letter: 1 });
+    c.restore();
+  }
+};

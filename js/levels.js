@@ -526,5 +526,3 @@ function secretProgress() {
   });
   return { got, all };
 }
-
-const stageIndex = id => STAGES.findIndex(s => s.id === id);

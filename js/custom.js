@@ -257,7 +257,6 @@ Screens.editor = (() => {
     drag: null, moverA: null, msg: '', msgT: 0, help: true
   };
 
-  const w2s = x => x - S.camX;
   const s2w = x => x + S.camX;
 
   function enter() {

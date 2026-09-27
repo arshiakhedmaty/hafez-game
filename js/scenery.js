@@ -336,16 +336,7 @@ const Props = {
     c.restore();
   },
 
-  /* barrel */
-  barrel(c, x, y, w, h) {
-    c.save();
-    rr(c, x, y, w, h, w * 0.28);
-    ink(c, '#7d4a29', 2);
-    c.fillStyle = 'rgba(22,13,28,0.35)';
-    c.fillRect(x, y + h * 0.22, w, 3);
-    c.fillRect(x, y + h * 0.68, w, 3);
-    c.restore();
-  },
+
 
   /* lasso ring anchor */
   ring(c, x, y, t, active) {

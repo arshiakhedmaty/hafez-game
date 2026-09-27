@@ -9,8 +9,7 @@ const Game = (() => {
   let stageIdx = 0;
   let paused = false;
   let pauseReturn = null;
-  let fadeT = 0, fadeDir = 0, fadeNext = null;
-  let last = 0, acc = 0;
+  let last = 0;
 
   /* a speedrun is the seven ordinary chapters on one clock. The clock
      only advances inside a stage, so menus and the pause screen are

@@ -225,6 +225,8 @@ const Play = (() => {
 
     /* landing feedback */
     if (!wasGrounded && p.grounded && p.airT > 0.18) {
+      /* the body takes the weight: a brief squash, harder the longer the fall */
+      p.landT = 0.16; p.landK = clamp(p.airT, 0.3, 1);
       Snd.play('land');
       FX.land(cx(p), p.y + p.h, clamp(p.airT, 0, 1.4));
       FX.shake(clamp(p.airT * 2.2, 0, 4), 0.14);
@@ -273,6 +275,7 @@ const Play = (() => {
     else p.anim = 'idle';
     p.speed = clamp(Math.abs(p.vx) / T.run, 0, 1.4);
     p.pushT = Math.max(0, p.pushT - dt);
+    p.landT = Math.max(0, (p.landT || 0) - dt);
 
     /* expression reacts to the situation */
     if (p.hearts <= 1) p.expr = 'scared';
@@ -904,6 +907,10 @@ const Play = (() => {
 
   function drawActor(c, p) {
     const blink = p.iframe > 0 && Math.floor(p.iframe * 14) % 2 === 0;
+    /* eyes go to the other one when they are near, and forward otherwise */
+    const other = p === S.a ? S.r : S.a;
+    const dx = cx(other) - cx(p);
+    const look = Math.abs(dx) < 320 ? clamp(dx / 90, -1, 1) * p.face : 0.35;
     drawChar(c, p.who, {
       x: cx(p), y: p.y + p.h, face: p.face, anim: p.anim, t: p.dance ? p.danceT : p.t,
       expr: p.expr, scale: 1, speed: p.speed || 0, airT: p.airT,
@@ -911,6 +918,7 @@ const Play = (() => {
       tilt: p.rope ? p.swingTilt : 0,
       swing: p.rope ? clamp(Math.abs(p.swingSpeed) / 420, 0, 1.6) : 0,
       closeness: p.closeness || 0,
+      look, land: p.landT > 0 ? (p.landT / 0.16) * p.landK : 0,
       prop: p.who === 'rojina' ? 'lantern' : null
     });
     /* name tag, so it is always obvious who is who */

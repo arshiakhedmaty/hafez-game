@@ -2,14 +2,10 @@
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
 const lerp=(a,b,t)=>a+(b-a)*t;
 const rnd=(a=1,b=0)=>b+Math.random()*(a-b);
-const rndi=(a,b)=>Math.floor(rnd(b+1,a));
 const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
 const dist=(x1,y1,x2,y2)=>Math.hypot(x2-x1,y2-y1);
 const aabb=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 const approach=(v,t,d)=>v<t?Math.min(v+d,t):Math.max(v-d,t);
-const easeOut=t=>1-Math.pow(1-t,3);
-const easeIn=t=>t*t*t;
-const easeInOut=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
 const fmtTime=s=>{const m=Math.floor(s/60),r=s-m*60;return m+':'+(r<10?'0':'')+r.toFixed(2);};
 
 /* rounded rect path */
